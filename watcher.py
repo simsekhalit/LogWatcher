@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
 
 from util import Node
+import json
+import os
 
 
 def main():
-    root = Node(5)
-    print(root.value)
+
+    log_file = "/var/log/syslog"
+    instance = LogWatch(log_file)
+    instance.setMatch(8)
+    instance.combineMatch(6, "AND", ())
+    print("Log source path of the object:", instance.log_source_path)
+    print("Rule tree of the object:\n", json.dumps(instance.rule_tree, indent = 2))
 
 
 class LogWatch:
@@ -15,7 +22,8 @@ class LogWatch:
     """
     # TODO: Open file which has name of filename.
     def __init__(self, filename):
-        pass
+        self.rule_tree = None
+        self.log_source_path = filename
 
     # TODO: Initiate the process.
     def run(self):
@@ -29,25 +37,49 @@ class LogWatch:
     def parseLog(self):
         pass
 
-    # TODO: Replace addressed Node with the given one.
+    # Replace addressed Node with the given one.
     def setMatch(self, match, address = ()):
-        pass
+        if address == ():
+            self.rule_tree = Node(match)
+        else:
+            node = self.rule_tree.getNode(address)
+            node.value = match
 
-    # TODO: Replace the the addressed node in the tree with a new node with given logical connector ("AND" or "OR").
+    # Replace the the addressed node in the tree with a new node with given logical connector ("AND" or "OR").
+    # Left branch of connector will be the previous node value, right branch will be the new match.
     def combineMatch(self, match, connector, address):
-        pass
+        node = self.rule_tree.getNode(address)
+        temp = node.value
+        node.value = connector
+        node.left = Node(temp)
+        node.right = Node(match)
 
-    # TODO: Delete the node in the given address.
+    # Delete the node at given address, the sibling of the node will replace the parent logical operator.
     def delMatch(self, address):
-        pass
+        if address == ():  # deleting the rule_tree
+            self.rule_tree = None
+        else:
+            parent_node = self.rule_tree.getNode(address[:-1])
+            if address[-1] == 0:
+                parent_node.value = parent_node.right.value
+            else:
+                parent_node.value = parent_node.left.value
+            parent_node.right = None
+            parent_node.left = None
 
-    # TODO: Save the configuration to persistent storage.
+    # Save current configuration as JSON to a file
+    # Configuration -> log source path + rule tree
     def save(self, name):
-        pass
+        with open(name + ".json", "w") as write_file:
+            data = {"log_source_path": self.log_source_path, "rule_tree": self.rule_tree}
+            json.dump(data, write_file, indent = 2)
 
-    # TODO: Load the configuration from persistent storage.
+    # Load configuration from persistent storage - JSON file
     def load(self, name):
-        pass
+        with open(name + ".json", "r") as read_file:
+            data = json.load(read_file)
+            self.log_source_path = data["log_source_path"]
+            self.rule_tree.fromJson(data["rule_tree"])
 
 
 if __name__ == '__main__':
