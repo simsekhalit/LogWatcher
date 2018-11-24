@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-
-from util import *
 import json
+import re
+import parser
+from util import *
 
 
 def main():
 
-    logFile = "/var/log/syslog"
+    logFile = "./sample.log"
     watcher = LogWatch()
 
 
@@ -15,22 +16,89 @@ class LogWatch:
     match -> (matchfield, operator, value, negated, caseinsens)
     matchfield -> one of (WHOLE, IP, SEVERITY, FACILITY, FIELD:range:sep, RE:regexp:field)
     """
-    # TODO: Open file which has name of filename.
     def __init__(self, filename=None):
         self.rules = Node()
         self.logFile = filename
+        self.logSource = None
+        self.filteredLogs = []
 
-    # TODO: Initiate the process.
     def run(self):
-        pass
+        self.logSource = open(self.logFile, "rb")
+        logParser = parser.Parser()
+        line = self.logSource.readline()
+        while line:
+            payload = logParser.parse(line.decode())
+            if self.applyFilters(self.rules, payload):
+                self.filteredLogs.append(line)
+            line = self.logSource.readline()
+        self.logSource.close()
 
-    # TODO: Receive and process log data from source then return.
-    def readLog(self):
-        pass
+    def applyFilters(self, rules, payload):
+        if rules.value == "AND":
+            return self.applyFilters(rules.left, payload) and self.applyFilters(rules.right, payload)
+        elif rules.value == "OR":
+            return self.applyFilters(rules.left, payload) or self.applyFilters(rules.right, payload)
+        else:
+            return self.applyRule(rules.value, payload)
 
-    # TODO: Parse given log according to RFC 5424.
-    def parseLog(self):
-        pass
+    def applyRule(self, rule, payload):
+        class InvalidMatchfield(Exception):
+            pass
+
+        class InvalidOperator(Exception):
+            pass
+
+        def applyMatch(operand):
+            arg1 = value
+            arg2 = operand
+            ret = None
+            if caseinsens:
+                arg1 = arg1.lower()
+                arg2 = arg2.lower()
+            if operator == "EQ":
+                ret = arg1 == arg2
+            elif operator == "LT":
+                ret = arg1 < arg2
+            elif operator == "LE":
+                ret = arg1 <= arg2
+            elif operator == "GT":
+                ret = arg1 > arg2
+            elif operator == "GE":
+                ret = arg1 >= arg2
+            elif operator == "RE":
+                return re.match(arg1, arg2)
+                pass
+            else:
+                raise InvalidOperator("Invalid operator {0} in rule {1}".format(operator, rule))
+            if not negated:
+                return ret
+            else:
+                return not ret
+
+        matchfield = rule[0]
+        operator = rule[1]
+        value = rule[2]
+        negated = rule[3]
+        caseinsens = rule[4]
+        if matchfield == "WHOLE":
+            return applyMatch(payload["message"])
+        elif matchfield == "IP":
+            # TODO: Apply the match according to IP address
+            pass
+        elif matchfield == "SEVERITY":
+            # TODO: Apply the match according to severity level
+            pass
+        elif matchfield == "FACILITY":
+            # TODO: Apply the match according to facility type
+            pass
+        elif matchfield.startswith("FIELD:"):
+            # TODO: Appy the match according to field
+            pass
+        elif matchfield.startswith("RE:"):
+            # TODO: Apply the match according to REGEX
+            pass
+        else:
+            raise InvalidMatchfield("Invalid matchfield {0} in rule {1}".format(matchfield, rule))
 
     # Set addressed Node to given "match" value.
     def setMatch(self, match, address = ()):
@@ -72,7 +140,7 @@ class LogWatch:
             name += ".json"
         data = {"logFile": self.logFile, "rules": self.rules}
         with open(name, "w") as writeFile:
-            json.dump(data, writeFile, indent = 2)
+            json.dump(data, writeFile, indent = 4)
 
     # Load configuration from JSON file
     def load(self, name):
@@ -81,7 +149,7 @@ class LogWatch:
         with open(name, "r") as readFile:
             data = json.load(readFile)
         self.logFile = data["logFile"]
-        self.rules = data["rules"]
+        self.rules.load(data["rules"])
 
 
 if __name__ == '__main__':

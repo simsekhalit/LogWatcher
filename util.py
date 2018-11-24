@@ -36,3 +36,14 @@ class Node(dict):
                 else:
                     raise AddressNotFoundError("Invalid address:", address)
             return tmp
+
+    def load(self, dict_):
+        if type(dict_["value"]) == list:
+            self.value = tuple(dict_["value"])
+        else:
+            self.value = dict_["value"]
+        if dict_["left"]:
+            self.left = Node().load(dict_["left"])
+        if dict_["right"]:
+            self.right = Node().load(dict_["right"])
+        return self

@@ -66,7 +66,7 @@ class TestLogWatch(unittest.TestCase):
 
 
 def main():
-    unittest.main(verbosity=2)
+    unittest.main(verbosity=3)
 
 
 if __name__ == '__main__':
