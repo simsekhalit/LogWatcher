@@ -9,33 +9,30 @@ class Node(dict):
     """Represents a binary tree node.
     """
 
-    def __init__(self, value, left=None, right=None):
+    def __init__(self, value=None, left=None, right=None):
         super().__init__()
         self.__dict__ = self
         self.value = value
         self.left = left
         self.right = right
 
-    # Alternative constructor method for Node to recover data from Json file
-    def fromJson(self, dict_):
-        root = Node(dict_['value'], dict_['left'], dict_['right'])
-        root.left = Node.fromJson
-        root.right = Node.fromJson
-        return root
-
     # Return node at given address
-    def getNode(self, address):
+    def getNode(self, address = ()):
         if address == ():
             return self
         else:
-            temp = self
+            tmp = self
             for step in address:
-                if temp.left is not None and temp.right is not None:  # current node is not a leaf (i.e. rule)
-                    if step == 0:
-                        temp = temp.left
+                if step == 0:
+                    if tmp.left is not None:
+                        tmp = tmp.left
                     else:
-                        temp = temp.right
+                        raise AddressNotFoundError("Could not find node at given address:", address)
+                elif step == 1:
+                    if tmp.right is not None:
+                        tmp = tmp.right
+                    else:
+                        raise AddressNotFoundError("Could not find node at given address:", address)
                 else:
-                    raise AddressNotFoundError("Could not find node at given address:", address)
-
-            return temp
+                    raise AddressNotFoundError("Invalid address:", address)
+            return tmp
