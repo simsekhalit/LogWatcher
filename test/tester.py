@@ -4,6 +4,7 @@ import os
 import sys
 import test_logWatch
 import test_parser
+import test_util
 import unittest
 testdir = os.path.dirname(__file__)
 srcdir = '../'
@@ -12,15 +13,19 @@ import watcher
 import util
 
 
-def main():
-    # Unit tests
+# Unit tests
+def runUnitTests():
     suite = unittest.TestSuite()
     suite.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_logWatch))
     suite.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_parser))
+    suite.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_util))
     unittest.TextTestRunner(verbosity=3).run(suite)
 
-    # Integration Tests
-    logFile = "./sample.log"
+
+# Integration tests
+def runIntegrationTests():
+    # Step 1 - Loading rules
+    logFile = "samples/sample.log"
     watcherInstance = watcher.LogWatch(logFile)
     watcherInstance.setMatch(("WHOLE", "EQ", "NOTE: Not using GLX TFP!", False, True))
     watcherInstance.combineMatch(("WHOLE", "RE", ".*Anacron.*", False, False), "OR")
@@ -31,14 +36,36 @@ def main():
     watcherInstance.combineMatch(("WHOLE", "RE", ".*address.*", False, True), "AND", (0, 0, 1))
     watcherInstance.combineMatch(("WHOLE", "RE", ".*rfkill.*", False, True), "OR", (0, 0, 0))
 
-    with open("sample-conf.json", "rb") as f:
+    # Asserting if rules are loaded successfully
+    with open("samples/sample_conf.json", "rb") as f:
         sampleRules = util.Node().load(json.load(f)["rules"])
     assert sampleRules == watcherInstance.rules
+    print("Rules are loaded successfully.", file=sys.stderr)
+
+    # Step 2 - Running Log Watcher
     watcherInstance.run()
-    with open("sample-result") as f:
+
+    # Asserting if logs are filtered successfully
+    with open("samples/sample_result") as f:
         result = f.read()
     assert str(watcherInstance.filteredLogs) == result
-    print("All tests are completed successfully.")
+    print("Logs are filtered successfully.", file=sys.stderr)
+
+    # Step 3 - Saving and loading
+    watcherInstance.save("test_sample.json")
+    watcherInstance2 = watcher.LogWatch()
+    watcherInstance2.load("test_sample.json")
+    os.remove("test_sample.json")
+
+    # Asserting if rules are saved and loaded successfully
+    assert watcherInstance.rules == watcherInstance2.rules
+    print("Rules are saved and loaded successfully.", file=sys.stderr)
+
+
+def main():
+    runUnitTests()
+    runIntegrationTests()
+    print("\nAll tests are completed successfully.", file=sys.stderr)
 
 
 if __name__ == '__main__':

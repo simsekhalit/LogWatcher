@@ -7,7 +7,7 @@ from util import *
 
 def main():
 
-    logFile = "./sample.log"
+    logFile = "samples/sample.log"
     watcher = LogWatch()
 
 
