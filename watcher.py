@@ -66,8 +66,7 @@ class LogWatch:
             elif operator == "GE":
                 ret = arg1 >= arg2
             elif operator == "RE":
-                return re.match(arg1, arg2)
-                pass
+                ret = re.match(arg1, arg2) is not None
             else:
                 raise InvalidOperator("Invalid operator {0} in rule {1}".format(operator, rule))
             if not negated:

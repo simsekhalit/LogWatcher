@@ -8,6 +8,26 @@ from util import Node
 
 
 class TestLogWatch(unittest.TestCase):
+    def test_applyRule(self):
+        watcherInstance = watcher.LogWatch()
+
+        # Case 1 - matchfield : WHOLE
+        payload = {'timestamp': 1542661800, 'hostname': 'john-pc', 'appname': 'gnome-shell', 'pid': '1758',
+                              'message': 'NOTE: Not using GLX TFP!'}
+        self.assertTrue(watcherInstance.applyRule(("WHOLE", "EQ", "NOTE: Not using GLX TFP!", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("WHOLE", "EQ", "NOTE: Not using GLX TFP!", False, True), payload))
+        self.assertTrue(watcherInstance.applyRule(("WHOLE", "EQ", "note: not using glx tfp!", False, True), payload))
+        self.assertFalse(watcherInstance.applyRule(("WHOLE", "EQ", "note: not using glx tfp!", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("WHOLE", "EQ", "note: not using glx tfp!", True, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("WHOLE", "EQ", "note: not using glx tfp!", True, False), payload))
+
+        self.assertTrue(watcherInstance.applyRule(("WHOLE", "RE", ".*GLX.*", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("WHOLE", "RE", ".*GLX.*", False, True), payload))
+        self.assertFalse(watcherInstance.applyRule(("WHOLE", "RE", ".*GLX.*", True, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("WHOLE", "RE", ".*GLX.*", True, True), payload))
+        self.assertTrue(watcherInstance.applyRule(("WHOLE", "RE", ".*tfp!", False, True), payload))
+        self.assertFalse(watcherInstance.applyRule(("WHOLE", "RE", ".*tfp!", False, False), payload))
+
     def test_combineMatch(self):
         # Case 1 - Single element rule tree
         watcherInstance = watcher.LogWatch()
