@@ -8,11 +8,15 @@ from parser import Parser
 
 class TestParser(unittest.TestCase):
     def test_parse(self):
-        line = "Nov 20 00:10:00 john-pc gnome-shell[1758]: NOTE: Not using GLX TFP!"
         parserInstance = Parser()
+        line = "Nov 20 00:10:00 john-pc gnome-shell[1758]: NOTE: Not using GLX TFP!"
         payload = parserInstance.parse(line)
         self.assertDictEqual({'timestamp': 1542661800, 'hostname': 'john-pc', 'appname': 'gnome-shell', 'pid': '1758',
                               'message': 'NOTE: Not using GLX TFP!'}, payload)
+        line = "Nov 24 03:58:00 x kernel: [33661.596279] rfkill: input handler enabled"
+        payload = parserInstance.parse(line)
+        self.assertDictEqual({'timestamp': 1543021080, 'hostname': 'x', 'appname': 'kernel',
+                              'message': '[33661.596279] rfkill: input handler enabled'}, payload)
 
 
 def main():

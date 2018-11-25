@@ -33,7 +33,8 @@ class Parser(object):
                                                              "%Y %b %d %H:%M:%S")))
         payload["hostname"]  = parsed[3]
         payload["appname"]   = parsed[4]
-        payload["pid"]       = parsed[5]
-        payload["message"]   = parsed[6]
+        if len(parsed) == 7:
+            payload["pid"]       = parsed[5]
+        payload["message"]   = parsed[-1]
 
         return payload
