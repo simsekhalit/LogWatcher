@@ -28,6 +28,43 @@ class TestLogWatch(unittest.TestCase):
         self.assertTrue(watcherInstance.applyRule(("WHOLE", "RE", ".*tfp!", False, True), payload))
         self.assertFalse(watcherInstance.applyRule(("WHOLE", "RE", ".*tfp!", False, False), payload))
 
+        # Case 2 - matchfield : IP
+        self.assertTrue(watcherInstance.applyRule(("IP", "EQ", "john-pc", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "EQ", "John-Pc", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("IP", "EQ", "John-Pc", False, True), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "EQ", "john-pc", True, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "EQ", "John-Pc", True, True), payload))
+
+        self.assertTrue(watcherInstance.applyRule(("IP", "RE", ".*john-pc.*", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "RE", ".*John-Pc.*", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("IP", "RE", ".*John-Pc.*", False, True), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "RE", ".*john-pc.*", True, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "RE", ".*John-Pc.*", True, True), payload))
+
+        payload = {'timestamp': 1542661800, 'hostname': "176.240.43.210", 'appname': 'gnome-shell', 'pid': '1758',
+                    'message': 'NOTE: Not using GLX TFP!'}
+        self.assertTrue(watcherInstance.applyRule(("IP", "EQ", "176.240.43.210", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "EQ", "192.168.14.7", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "EQ", "176.240.43.210", True, False), payload))
+
+        self.assertTrue(watcherInstance.applyRule(("IP", "LT", "157.51.14.41", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "LT", "192.168.14.7", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "LT", "157.51.14.41", True, False), payload))
+
+        self.assertTrue(watcherInstance.applyRule(("IP", "GT", "192.168.14.7", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "GT", "157.51.14.41", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "GT", "192.168.14.7", True, False), payload))
+
+        self.assertTrue(watcherInstance.applyRule(("IP", "LE", "176.240.43.210", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("IP", "LE", "157.51.14.41", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "LE", "192.168.14.7", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "LE", "176.240.43.210", True, False), payload))
+
+        self.assertTrue(watcherInstance.applyRule(("IP", "GE", "176.240.43.210", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("IP", "GE", "192.168.14.7", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "GE", "157.51.14.41", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "GE", "176.240.43.210", True, False), payload))
+
     def test_combineMatch(self):
         # Case 1 - Single element rule tree
         watcherInstance = watcher.LogWatch()

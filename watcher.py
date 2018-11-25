@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import ipaddress
 import json
 import re
 import parser
@@ -51,8 +52,8 @@ class LogWatch:
         def applyMatch(operand):
             arg1 = value
             arg2 = operand
-            ret = None
-            if caseinsens:
+
+            if caseinsens and type(operand) == str:
                 arg1 = arg1.lower()
                 arg2 = arg2.lower()
             if operator == "EQ":
@@ -82,8 +83,10 @@ class LogWatch:
         if matchfield == "WHOLE":
             return applyMatch(payload["message"])
         elif matchfield == "IP":
-            # TODO: Apply the match according to IP address
-            pass
+            if re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', value):
+                payload["hostname"] = ipaddress.IPv4Address(payload["hostname"])
+                value = ipaddress.IPv4Address(value)
+            return applyMatch(payload["hostname"])
         elif matchfield == "SEVERITY":
             # TODO: Apply the match according to severity level
             pass
