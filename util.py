@@ -5,6 +5,10 @@ class AddressNotFoundError(Exception):
     pass
 
 
+class NotAnObserverError(Exception):
+    pass
+
+
 class Node(dict):
     """Represents a binary tree node.
     """
@@ -47,3 +51,15 @@ class Node(dict):
         if dict_["right"]:
             self.right = Node().load(dict_["right"])
         return self
+
+
+# TODO: This class may be a distinct script for the representation and simulation of client with Logwatcher
+class Observer:
+    """Represents an observer(user) of a Logwatch object
+    """
+    def __init__(self, watcher):
+        self.filteredLogs = []
+        watcher.register(self)
+
+    def update(self, log):
+        self.filteredLogs.append(log)

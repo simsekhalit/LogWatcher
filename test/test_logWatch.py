@@ -13,7 +13,7 @@ class TestLogWatch(unittest.TestCase):
 
         # Case 1 - matchfield : WHOLE
         payload = {'timestamp': 1542661800, 'hostname': 'john-pc', 'appname': 'gnome-shell', 'pid': '1758',
-                              'message': 'NOTE: Not using GLX TFP!'}
+                              'msg': 'NOTE: Not using GLX TFP!'}
         self.assertTrue(watcherInstance.applyRule(("WHOLE", "EQ", "NOTE: Not using GLX TFP!", False, False), payload))
         self.assertTrue(watcherInstance.applyRule(("WHOLE", "EQ", "NOTE: Not using GLX TFP!", False, True), payload))
         self.assertTrue(watcherInstance.applyRule(("WHOLE", "EQ", "note: not using glx tfp!", False, True), payload))
@@ -34,6 +34,7 @@ class TestLogWatch(unittest.TestCase):
         self.assertTrue(watcherInstance.applyRule(("IP", "EQ", "John-Pc", False, True), payload))
         self.assertFalse(watcherInstance.applyRule(("IP", "EQ", "john-pc", True, False), payload))
         self.assertFalse(watcherInstance.applyRule(("IP", "EQ", "John-Pc", True, True), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "EQ", "176.240.43.210", False, False), payload))
 
         self.assertTrue(watcherInstance.applyRule(("IP", "RE", ".*john-pc.*", False, False), payload))
         self.assertFalse(watcherInstance.applyRule(("IP", "RE", ".*John-Pc.*", False, False), payload))
@@ -42,7 +43,7 @@ class TestLogWatch(unittest.TestCase):
         self.assertFalse(watcherInstance.applyRule(("IP", "RE", ".*John-Pc.*", True, True), payload))
 
         payload = {'timestamp': 1542661800, 'hostname': "176.240.43.210", 'appname': 'gnome-shell', 'pid': '1758',
-                    'message': 'NOTE: Not using GLX TFP!'}
+                    'msg': 'NOTE: Not using GLX TFP!'}
         self.assertTrue(watcherInstance.applyRule(("IP", "EQ", "176.240.43.210", False, False), payload))
         self.assertFalse(watcherInstance.applyRule(("IP", "EQ", "192.168.14.7", False, False), payload))
         self.assertFalse(watcherInstance.applyRule(("IP", "EQ", "176.240.43.210", True, False), payload))
@@ -64,6 +65,8 @@ class TestLogWatch(unittest.TestCase):
         self.assertTrue(watcherInstance.applyRule(("IP", "GE", "192.168.14.7", False, False), payload))
         self.assertFalse(watcherInstance.applyRule(("IP", "GE", "157.51.14.41", False, False), payload))
         self.assertFalse(watcherInstance.applyRule(("IP", "GE", "176.240.43.210", True, False), payload))
+
+        # TODO: Add test cases for other matchfield cases
 
     def test_combineMatch(self):
         # Case 1 - Single element rule tree
@@ -152,6 +155,7 @@ class TestLogWatch(unittest.TestCase):
         watcherInstance2 = watcher.LogWatch()
         watcherInstance2.load("samples/test_sample.json")
         self.assertEqual(watcherInstance.rules, watcherInstance2.rules)
+
 
 def main():
     unittest.main(verbosity=3)

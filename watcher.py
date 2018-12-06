@@ -4,12 +4,7 @@ import json
 import re
 import parser
 from util import *
-
-
-def main():
-
-    logFile = "samples/sample.log"
-    watcher = LogWatch()
+from syslog_rfc5424_parser.constants import SyslogSeverity, SyslogFacility
 
 
 class LogWatch:
@@ -22,15 +17,18 @@ class LogWatch:
         self.logFile = filename
         self.logSource = None
         self.filteredLogs = []
+        self.observerList = []
 
+    # TODO: Add a UDP socket to recvfrom from remote log sources as well as the local ones as 8192 bytes
     def run(self):
         self.logSource = open(self.logFile, "rb")
         logParser = parser.Parser()
         line = self.logSource.readline()
         while line:
-            payload = logParser.parse(line.decode())
+            payload = logParser.parse(line.decode(), False)
             if self.applyFilters(self.rules, payload):
                 self.filteredLogs.append(line)
+                self.notify(line)
             line = self.logSource.readline()
         self.logSource.close()
 
@@ -43,6 +41,9 @@ class LogWatch:
             return self.applyRule(rules.value, payload)
 
     def applyRule(self, rule, payload):
+        if rule is None:
+            return None
+
         class InvalidMatchfield(Exception):
             pass
 
@@ -80,27 +81,71 @@ class LogWatch:
         value = rule[2]
         negated = rule[3]
         caseinsens = rule[4]
+
         if matchfield == "WHOLE":
-            return applyMatch(payload["message"])
+            return applyMatch(payload["msg"])
+
         elif matchfield == "IP":
-            if re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', value):
-                payload["hostname"] = ipaddress.IPv4Address(payload["hostname"])
+            if re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', value) and re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', payload["hostname"]):
                 value = ipaddress.IPv4Address(value)
-            return applyMatch(payload["hostname"])
+                return applyMatch(ipaddress.IPv4Address(payload["hostname"]))
+            elif type(value) == str and type(payload["hostname"] == str):
+                return applyMatch(payload["hostname"])
+            else:
+                return False
+
         elif matchfield == "SEVERITY":
-            # TODO: Apply the match according to severity level
-            pass
+            if caseinsens:
+                value = value.lower()
+            elif value != value.lower():
+                return False
+            severity = 7 - SyslogSeverity[payload["severity"]]
+            value = 7 - SyslogSeverity[value]
+            return applyMatch(severity)
+
         elif matchfield == "FACILITY":
-            # TODO: Apply the match according to facility type
-            pass
+            if caseinsens:
+                value = value.lower()
+            elif value != value.lower():
+                return False
+            facility = SyslogFacility[payload["facility"]]
+            value = SyslogFacility[value]
+            return applyMatch(facility)
+
         elif matchfield.startswith("FIELD:"):
-            # TODO: Appy the match according to field
-            pass
+            fieldSplitList = matchfield.split(':')
+            fieldStartRange = int(fieldSplitList[1][0])
+            delimiter = fieldSplitList[2]
+            if len(fieldSplitList[1]) != 1:
+                fieldEndRange = int(fieldSplitList[1][2:]) + 1
+                return applyMatch("".join(payload["msg"].split(delimiter)[fieldStartRange:fieldEndRange]))
+            else:
+                return applyMatch("".join(payload["msg"].split(delimiter)[fieldStartRange]))
+
         elif matchfield.startswith("RE:"):
-            # TODO: Apply the match according to REGEX
-            pass
+            regexSplitList = matchfield.split(':')
+            regexp = regexSplitList[1]
+            field = regexSplitList[2]
+            return applyMatch(re.sub(regexp, '\g<' + field + '>', payload["msg"]))
+
         else:
             raise InvalidMatchfield("Invalid matchfield {0} in rule {1}".format(matchfield, rule))
+
+    # Register given observer
+    def register(self, obs):
+        self.observerList.append(obs)
+
+    # Unregister given observer
+    def unregister(self, obs):
+        try:
+            self.observerList.remove(obs)
+        except:
+            raise NotAnObserverError("{0} is not an Observer of Logwatcher".format(obs))
+
+    # Notify all observers when a new filtered log comes
+    def notify(self, log):
+        for observer in self.observerList:
+            observer.update(self, log)
 
     # Set addressed Node to given "match" value.
     def setMatch(self, match, address = ()):
@@ -152,7 +197,3 @@ class LogWatch:
             data = json.load(readFile)
         self.logFile = data["logFile"]
         self.rules.load(data["rules"])
-
-
-if __name__ == '__main__':
-    main()

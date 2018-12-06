@@ -24,3 +24,6 @@ class TestNode(unittest.TestCase):
         self.assertEqual(watcherInstance.rules.left.right, watcherInstance.rules.getNode((0, 1)))
         self.assertEqual(watcherInstance.rules.right.left, watcherInstance.rules.getNode((1, 0)))
         self.assertEqual(watcherInstance.rules.right.right, watcherInstance.rules.getNode((1, 1)))
+
+
+# TODO: Add test cases for Observers with their own operations
