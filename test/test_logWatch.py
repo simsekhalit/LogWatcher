@@ -66,7 +66,101 @@ class TestLogWatch(unittest.TestCase):
         self.assertFalse(watcherInstance.applyRule(("IP", "GE", "157.51.14.41", False, False), payload))
         self.assertFalse(watcherInstance.applyRule(("IP", "GE", "176.240.43.210", True, False), payload))
 
-        # TODO: Add test cases for other matchfield cases
+        # Case 3 - matchfield : SEVERITY
+        payload = {'severity': 'crit', 'facility': 'auth', 'version': 1, 'timestamp': '2003-10-11T22:14:15.003Z',
+                   'hostname': '193.156.21.2', 'appname': 'su', 'procid': None, 'msgid': 'ID47', 'sd': {},
+                   'msg': "BOM'su root' failed for lonvick on /dev/pts/8"}
+
+        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "EQ", "crit", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "EQ", "criT", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "EQ", "criT", False, True), payload))
+        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "EQ", "crit", True, False), payload))
+
+        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "LT", "debug", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "LT", "emerg", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "LT", "debuG", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "LT", "debuG", False, True), payload))
+        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "LT", "debug", True, False), payload))
+
+        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "GT", "emerg", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "GT", "debug", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "GT", "emerG", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "GT", "emerG", False, True), payload))
+        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "GT", "emerg", True, False), payload))
+
+        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "LE", "crit", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "LE", "debug", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "LE", "emerg", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "LE", "criT", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "LE", "criT", False, True), payload))
+        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "LE", "crit", True, False), payload))
+
+        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "GE", "crit", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "GE", "emerg", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "GE", "debug", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "GE", "criT", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "GE", "criT", False, True), payload))
+        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "GE", "crit", True, False), payload))
+
+        # Case 4 - matchfield : FACILITY
+        self.assertTrue(watcherInstance.applyRule(("FACILITY", "EQ", "auth", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("FACILITY", "EQ", "autH", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("FACILITY", "EQ", "autH", False, True), payload))
+        self.assertFalse(watcherInstance.applyRule(("FACILITY", "EQ", "auth", True, False), payload))
+
+        # Case 5 - matchfield : FIELD
+        payload = {'severity': 'crit', 'facility': 'auth', 'version': 1, 'timestamp': '2003-10-11T22:14:15.003Z',
+                   'hostname': '193.156.21.2', 'appname': 'su', 'procid': None, 'msgid': 'ID47', 'sd': {},
+                   'msg': "BOM,'su root',failed,for,lonvick,on,/dev/pts/8,check"}
+
+        self.assertTrue(watcherInstance.applyRule(("FIELD:7:,", "EQ", "check", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("FIELD:2:,", "EQ", "failed", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("FIELD:2-5:,", "EQ", "failedforlonvickon", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("FIELD:2-5:,", "EQ", "FailedForLonvickOn", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("FIELD:2-5:,", "EQ", "FailedForLonvickOn", False, True), payload))
+        self.assertFalse(watcherInstance.applyRule(("FIELD:2-5:,", "EQ", "failedforlonvickon", True, False), payload))
+
+        self.assertTrue(watcherInstance.applyRule(("FIELD:7:,", "RE", ".*check.*", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("FIELD:2:,", "RE", ".*failed.*", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("FIELD:2-5:,", "RE", ".*failedforlonvickon.*", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("FIELD:2-5:,", "RE", ".*FailedForLonvickOn.*", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("FIELD:2-5:,", "RE", ".*FailedForLonvickOn.*", False, True), payload))
+        self.assertFalse(watcherInstance.applyRule(("FIELD:2-5:,", "RE", ".*failedforlonvickon.*", True, False), payload))
+
+        payload = {'severity': 'crit', 'facility': 'auth', 'version': 1, 'timestamp': '2003-10-11T22:14:15.003Z',
+                   'hostname': '193.156.21.2', 'appname': 'su', 'procid': None, 'msgid': 'ID47', 'sd': {},
+                   'msg': "BOM 'grep' failed for lonvick on /dev/pts/8 check"}
+
+        self.assertTrue(watcherInstance.applyRule(("FIELD:7: ", "EQ", "check", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("FIELD:2: ", "EQ", "failed", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("FIELD:2-5: ", "EQ", "failedforlonvickon", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("FIELD:2-5: ", "EQ", "FailedForLonvickOn", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("FIELD:2-5: ", "EQ", "FailedForLonvickOn", False, True), payload))
+        self.assertFalse(watcherInstance.applyRule(("FIELD:2-5: ", "EQ", "failedforlonvickon", True, False), payload))
+
+        self.assertTrue(watcherInstance.applyRule(("FIELD:7: ", "RE", ".*check.*", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("FIELD:2: ", "RE", ".*failed.*", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("FIELD:2-5: ", "RE", ".*failedforlonvickon.*", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("FIELD:2-5: ", "RE", ".*FailedForLonvickOn.*", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("FIELD:2-5: ", "RE", ".*FailedForLonvickOn.*", False, True), payload))
+        self.assertFalse(watcherInstance.applyRule(("FIELD:2-5: ", "RE", ".*failedforlonvickon.*", True, False), payload))
+
+        # Case 6 - matchfield : RE
+        payload = {'severity': 'crit', 'facility': 'auth', 'version': 1, 'timestamp': '2003-10-11T22:14:15.003Z',
+                   'hostname': '193.156.21.2', 'appname': 'su', 'procid': None, 'msgid': 'ID47', 'sd': {},
+                   'msg': "BOM'su root' failed for lonvick on /dev/pts/8"}
+
+        self.assertTrue(watcherInstance.applyRule(("RE:.*su root.* (?P<event>.*ed).*on (?P<event_location>.+):event_location", "EQ", "/dev/pts/8", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("RE:.*su root.* (?P<event>.*ed).*on (?P<event_location>.+):event", "EQ", "failed", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("RE:.*su root.* (?P<event>.*ed).*on (?P<event_location>.+):event", "EQ", "faileD", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("RE:.*su root.* (?P<event>.*ed).*on (?P<event_location>.+):event", "EQ", "faileD", False, True), payload))
+        self.assertFalse(watcherInstance.applyRule(("RE:.*su root.* (?P<event>.*ed).*on (?P<event_location>.+):event", "EQ", "failed", True, False), payload))
+
+        self.assertTrue(watcherInstance.applyRule(("RE:.*su root.* (?P<event>.*ed).*on (?P<event_location>.+):event_location","RE", ".*dev.*", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("RE:.*su root.* (?P<event>.*ed).*on (?P<event_location>.+):event", "RE", ".*fail.*", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("RE:.*su root.* (?P<event>.*ed).*on (?P<event_location>.+):event", "RE", ".*faiL.*", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("RE:.*su root.* (?P<event>.*ed).*on (?P<event_location>.+):event", "RE", ".*faiL.*", False, True), payload))
+        self.assertFalse(watcherInstance.applyRule(("RE:.*su root.* (?P<event>.*ed).*on (?P<event_location>.+):event", "RE", ".*fail.*", True, False), payload))
 
     def test_combineMatch(self):
         # Case 1 - Single element rule tree
