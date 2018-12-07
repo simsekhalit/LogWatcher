@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import ipaddress
 import json
-import re
 import parser
+import re
 from util import *
 from syslog_rfc5424_parser.constants import SyslogSeverity, SyslogFacility
 
@@ -19,7 +19,7 @@ class LogWatch:
         self.filteredLogs = []
         self.observerList = []
 
-    # TODO: Add a UDP socket to recvfrom from remote log sources as well as the local ones as 8192 bytes
+    # TODO: Add a UDP socket to recvfrom from remote log sources as well as the local ones as 4096 bytes
     def run(self):
         self.logSource = open(self.logFile, "rb")
         logParser = parser.Parser()
@@ -94,22 +94,30 @@ class LogWatch:
             else:
                 return False
 
+        # emerg is the highest, debug is the lowest severity
         elif matchfield == "SEVERITY":
-            if caseinsens:
-                value = value.lower()
-            elif value != value.lower():
-                return False
+            if type(value) == str:
+                if caseinsens:
+                    value = value.lower()
+                elif value != value.lower():
+                    return False
+                value = 7 - SyslogSeverity[value]
             severity = 7 - SyslogSeverity[payload["severity"]]
-            value = 7 - SyslogSeverity[value]
             return applyMatch(severity)
 
+        # kern is the highest(0), unknown is the lowest (-1), if unknown is not present local7 is the lowest (23)
         elif matchfield == "FACILITY":
-            if caseinsens:
-                value = value.lower()
-            elif value != value.lower():
-                return False
-            facility = SyslogFacility[payload["facility"]]
-            value = SyslogFacility[value]
+            if type(value) == str:
+                if caseinsens:
+                    value = value.lower()
+                elif value != value.lower():
+                    return False
+                value = 23 - SyslogFacility[value]
+            facility = 23 - SyslogFacility[payload["facility"]]
+            if facility == 24:
+                facility = -1
+            if value == 24:
+                value = -1
             return applyMatch(facility)
 
         elif matchfield.startswith("FIELD:"):
@@ -118,7 +126,7 @@ class LogWatch:
             delimiter = fieldSplitList[2]
             if len(fieldSplitList[1]) != 1:
                 fieldEndRange = int(fieldSplitList[1][2:]) + 1
-                return applyMatch("".join(payload["msg"].split(delimiter)[fieldStartRange:fieldEndRange]))
+                return applyMatch(delimiter.join(payload["msg"].split(delimiter)[fieldStartRange:fieldEndRange]))
             else:
                 return applyMatch("".join(payload["msg"].split(delimiter)[fieldStartRange]))
 
