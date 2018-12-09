@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+import multiprocessing
+import socket
+import threading
+import parser
 
 
 class AddressNotFoundError(Exception):
@@ -21,7 +25,7 @@ class Node(dict):
         self.right = right
 
     # Return node at given address
-    def getNode(self, address = ()):
+    def getNode(self, address=()):
         if address == ():
             return self
         else:
@@ -53,13 +57,66 @@ class Node(dict):
         return self
 
 
-# TODO: This class may be a distinct script for the representation and simulation of client with Logwatcher
-class Observer:
-    """Represents an observer(user) of a Logwatch object
-    """
-    def __init__(self, watcher):
-        self.filteredLogs = []
-        watcher.register(self)
+class LogCollector(multiprocessing.Process):
+    def __init__(self, hostAddress, port, pipe):
+        super(LogCollector, self).__init__()
+        self.hostAddress = hostAddress
+        self.port = port
+        self.pipe = pipe
 
-    def update(self, log):
-        self.filteredLogs.append(log)
+    def run(self):
+        logParser = parser.Parser(True)
+        collectorSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        collectorSock.bind((self.hostAddress, self.port))
+        while True:
+            data, addr = collectorSock.recvfrom(4096)
+            payload = logParser.parse(data)
+            self.pipe.send((addr, payload))
+
+
+class LogWatchTracker:
+    def __init__(self, process, pipe):
+        self.process = process
+        self.pipe = pipe
+        self.logs = []
+        self.lwLock = threading.Lock()
+        self.registeredClients = []
+
+
+class ClientTracker:
+    def __init__(self, thread, sock):
+        self.clientLock = threading.Lock()
+        self.thread = thread
+        self.sock = sock
+        self.buffer = sock.makefile("brw")
+
+    def read(self):
+        return self.buffer.readline().decode()[:-1]
+
+    def write(self, data):
+        self.buffer.write(data.encode() + b"\n")
+        self.buffer.flush()
+
+
+class SocketBuffer:
+    def __init__(self, sock):
+        self.buffer = sock.makefile("brw")
+        self.sock = sock
+        self.addr = sock.getpeername()
+
+    def read(self):
+        return self.buffer.readline().decode().rstrip()
+
+    def write(self, data):
+        self.buffer.write(data.encode() + b"\n")
+        self.buffer.flush()
+
+# class Observer:
+#     """Represents an observer(user) of a Logwatch object
+#     """
+#     def __init__(self, watcher):
+#         self.filteredLogs = []
+#         watcher.register(self)
+#
+#     def update(self, log):
+#         self.filteredLogs.append(log)
