@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 import ipaddress
-import json
 import multiprocessing
 import re
 import selectors
 import socket
 import threading
+import sqlite3
 import sys
 from util import Node, LogCollector, LogWatchTracker, ClientTracker
 from syslog_rfc5424_parser.constants import SyslogSeverity, SyslogFacility
@@ -49,9 +49,8 @@ class LogWatchManager:
                     thread.start()
                 # LogWatch: A message has come from a LogWatch object
                 else:
-                    with key.data.lwLock:
-                        log = key.fileobj.recv()
-                        key.data.logs.append(log)
+                    log = key.fileobj.recv()
+                    key.data.logs.append(log)
                     self.notify(key.data, log)
 
     def register(self, client, lwId):
@@ -85,11 +84,10 @@ class LogWatchManager:
             return str(e)
 
     def notify(self, lw, log):
-        with self.clientTrackersLock:
-            for client in self.clientTrackers:
-                if lw in client.registeredWatchers:
-                    with client.clientLock:
-                        client.write(log)
+        with self.logWatchTrackersLock:
+            for client in lw.registeredClients:
+                with client.clientLock:
+                    client.write("log\n" + log)
 
     def clientHandler(self, addr):
         def managerCreate():
@@ -231,7 +229,7 @@ class LogWatchManager:
                         lw = self.logWatchTrackers[lwId]
                 if lw:
                     with lw.lwLock:
-                        lw.pipe.write(("load", ))
+                        lw.pipe.write(("loadJSON", ))
                         ret = "Request is sent"
             except Exception as e:
                 ret = str(e)
@@ -241,7 +239,7 @@ class LogWatchManager:
         managerMethods = {"create": managerCreate, "list": managerList, "register": managerRegister,
                           "unregister": managerUnregister}
         lwMethods = {"setMatch": lwSetMatch, "combineMatch": lwCombineMatch, "delMatch": lwDelMatch, "save": lwSave,
-                     "load": lwLoad}
+                     "loadJSON": lwLoad}
         while True:
             data = tracker.read()
             data = data.split(' ')
@@ -282,6 +280,7 @@ class LogWatch(multiprocessing.Process):
         self.pipe = pipe
         self.rules = Node()
         self.lwId = lwId
+        self.database = "LogWatch.db"
 
     def run(self):
         data = self.pipe.recv()
@@ -294,7 +293,7 @@ class LogWatch(multiprocessing.Process):
                 self.delMatch(*data[1:])
             elif data[0] == "save":
                 self.save()
-            elif data[0] == "load":
+            elif data[0] == "loadJSON":
                 self.load()
             elif data[0] == "log":
                 if self.applyFilters(self.rules, data[1].as_dict()):
@@ -320,8 +319,8 @@ class LogWatch(multiprocessing.Process):
             pass
 
         def applyMatch(operand):
-            arg1 = value
-            arg2 = operand
+            arg1 = operand
+            arg2 = value
 
             if caseinsens and type(operand) == str:
                 arg1 = arg1.lower()
@@ -337,7 +336,7 @@ class LogWatch(multiprocessing.Process):
             elif operator == "GE":
                 ret = arg1 >= arg2
             elif operator == "RE":
-                ret = re.match(arg1, arg2) is not None
+                ret = re.match(arg2, arg1) is not None
             else:
                 raise InvalidOperator("Invalid operator {0} in rule {1}".format(operator, rule))
             if not negated:
@@ -439,14 +438,25 @@ class LogWatch(multiprocessing.Process):
             parentNode.left = survivorNode.left
             parentNode.right = survivorNode.right
 
-    # Save current configuration as JSON to a file
-    # Configuration -> log source path + rule tree
+    # Save current configuration to database
     def save(self):
-        with open("LogWatch{}.json".format(str(self.lwId)), "w") as writeFile:
-            json.dump(self.rules, writeFile, indent=4)
+        dump = self.rules.dump()
+        with sqlite3.connect(self.database) as conn:
+            c = conn.cursor()
+            try:
+                c.execute("""drop table LogWatch{}""".format(0))
+            except:
+                pass
+            try:
+                a = c.execute("""create table LogWatch{}(path TEXT, rule TEXT)""".format(self.lwId))
+            except:
+                pass
+            for row in dump:
+                c.execute("""insert into LogWatch{} (path, rule) values (\"{}\", \"{}\")""".format(0, row[0], row[1]))
 
-    # Load configuration from JSON file
+    # Load configuration from database
     def load(self):
-        with open("LogWatch{}.json".format(str(self.lwId)), "r") as readFile:
-            data = json.load(readFile)
-        self.rules.load(data)
+        with sqlite3.connect(self.database) as conn:
+            c = conn.cursor()
+            dump = c.execute("""select * from LogWatch{};""".format(self.lwId)).fetchall()
+        self.rules.load(dump)

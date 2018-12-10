@@ -38,7 +38,7 @@ def runIntegrationTests():
 
     # Asserting if rules are loaded successfully
     with open("samples/sample_conf.json", "rb") as f:
-        sampleRules = util.Node().load(json.load(f)["rules"])
+        sampleRules = util.Node().loadJSON(json.load(f)["rules"])
     assert sampleRules == watcherInstance.rules
     print("Rules are loaded successfully.", file=sys.stderr)
 

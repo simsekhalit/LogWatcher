@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import sqlite3
 import sys
 import unittest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -9,7 +10,7 @@ from util import Node
 
 class TestLogWatch(unittest.TestCase):
     def test_applyRule(self):
-        watcherInstance = watcher.LogWatch()
+        watcherInstance = watcher.LogWatch(0, None)
 
         # Case 1 - matchfield : WHOLE
         payload = {'timestamp': 1542661800, 'hostname': 'john-pc', 'appname': 'gnome-shell', 'pid': '1758',
@@ -48,22 +49,26 @@ class TestLogWatch(unittest.TestCase):
         self.assertFalse(watcherInstance.applyRule(("IP", "EQ", "192.168.14.7", False, False), payload))
         self.assertFalse(watcherInstance.applyRule(("IP", "EQ", "176.240.43.210", True, False), payload))
 
-        self.assertTrue(watcherInstance.applyRule(("IP", "LT", "157.51.14.41", False, False), payload))
-        self.assertFalse(watcherInstance.applyRule(("IP", "LT", "192.168.14.7", False, False), payload))
-        self.assertFalse(watcherInstance.applyRule(("IP", "LT", "157.51.14.41", True, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("IP", "LT", "192.168.14.7", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "LT", "192.168.14.7", True, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "LT", "157.51.14.41", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("IP", "LT", "157.51.14.41", True, False), payload))
 
-        self.assertTrue(watcherInstance.applyRule(("IP", "GT", "192.168.14.7", False, False), payload))
-        self.assertFalse(watcherInstance.applyRule(("IP", "GT", "157.51.14.41", False, False), payload))
-        self.assertFalse(watcherInstance.applyRule(("IP", "GT", "192.168.14.7", True, False), payload))
-
+        self.assertTrue(watcherInstance.applyRule(("IP", "LE", "192.168.14.7", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "LE", "192.168.14.7", True, False), payload))
         self.assertTrue(watcherInstance.applyRule(("IP", "LE", "176.240.43.210", False, False), payload))
-        self.assertTrue(watcherInstance.applyRule(("IP", "LE", "157.51.14.41", False, False), payload))
-        self.assertFalse(watcherInstance.applyRule(("IP", "LE", "192.168.14.7", False, False), payload))
         self.assertFalse(watcherInstance.applyRule(("IP", "LE", "176.240.43.210", True, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "LE", "157.51.14.41", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("IP", "LE", "157.51.14.41", True, False), payload))
+
+        self.assertTrue(watcherInstance.applyRule(("IP", "GT", "157.51.14.41", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "GT", "157.51.14.41", True, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "GT", "192.168.14.7", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("IP", "GT", "192.168.14.7", True, False), payload))
 
         self.assertTrue(watcherInstance.applyRule(("IP", "GE", "176.240.43.210", False, False), payload))
-        self.assertTrue(watcherInstance.applyRule(("IP", "GE", "192.168.14.7", False, False), payload))
-        self.assertFalse(watcherInstance.applyRule(("IP", "GE", "157.51.14.41", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("IP", "GE", "192.168.14.7", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("IP", "GE", "157.51.14.41", False, False), payload))
         self.assertFalse(watcherInstance.applyRule(("IP", "GE", "176.240.43.210", True, False), payload))
 
         # Case 3 - matchfield : SEVERITY
@@ -72,38 +77,38 @@ class TestLogWatch(unittest.TestCase):
                    'msg': "BOM'su root' failed for lonvick on /dev/pts/8"}
 
         self.assertTrue(watcherInstance.applyRule(("SEVERITY", "EQ", "crit", False, False), payload))
-        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "EQ", 5, False, False), payload))
-        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "EQ", "criT", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "EQ", 2, False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "EQ", "criT", False, False), payload))
         self.assertTrue(watcherInstance.applyRule(("SEVERITY", "EQ", "criT", False, True), payload))
         self.assertFalse(watcherInstance.applyRule(("SEVERITY", "EQ", "crit", True, False), payload))
 
-        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "LT", "debug", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "LT", "debug", False, False), payload))
         self.assertTrue(watcherInstance.applyRule(("SEVERITY", "LT", 0, False, False), payload))
-        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "LT", "emerg", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "LT", "emerg", False, False), payload))
         self.assertFalse(watcherInstance.applyRule(("SEVERITY", "LT", "debuG", False, False), payload))
-        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "LT", "debuG", False, True), payload))
-        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "LT", "debug", True, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "LT", "debuG", False, True), payload))
+        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "LT", "debug", True, False), payload))
 
-        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "GT", "emerg", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "GT", "emerg", False, False), payload))
         self.assertTrue(watcherInstance.applyRule(("SEVERITY", "GT", 7, False, False), payload))
-        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "GT", "debug", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "GT", "debug", False, False), payload))
         self.assertFalse(watcherInstance.applyRule(("SEVERITY", "GT", "emerG", False, False), payload))
-        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "GT", "emerG", False, True), payload))
-        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "GT", "emerg", True, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "GT", "emerG", False, True), payload))
+        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "GT", "emerg", True, False), payload))
 
         self.assertTrue(watcherInstance.applyRule(("SEVERITY", "LE", "crit", False, False), payload))
-        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "LE", 5, False, False), payload))
-        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "LE", "debug", False, False), payload))
-        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "LE", "emerg", False, False), payload))
-        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "LE", "criT", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "LE", 5, False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "LE", "debug", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "LE", "emerg", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "LE", "criT", False, False), payload))
         self.assertTrue(watcherInstance.applyRule(("SEVERITY", "LE", "criT", False, True), payload))
         self.assertFalse(watcherInstance.applyRule(("SEVERITY", "LE", "crit", True, False), payload))
 
         self.assertTrue(watcherInstance.applyRule(("SEVERITY", "GE", "crit", False, False), payload))
         self.assertTrue(watcherInstance.applyRule(("SEVERITY", "GE", 5, False, False), payload))
-        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "GE", "emerg", False, False), payload))
-        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "GE", "debug", False, False), payload))
-        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "GE", "criT", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("SEVERITY", "GE", "emerg", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "GE", "debug", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("SEVERITY", "GE", "criT", False, False), payload))
         self.assertTrue(watcherInstance.applyRule(("SEVERITY", "GE", "criT", False, True), payload))
         self.assertFalse(watcherInstance.applyRule(("SEVERITY", "GE", "crit", True, False), payload))
 
@@ -111,40 +116,40 @@ class TestLogWatch(unittest.TestCase):
 
         # Case 4 - matchfield : FACILITY
         self.assertTrue(watcherInstance.applyRule(("FACILITY", "EQ", "auth", False, False), payload))
-        self.assertTrue(watcherInstance.applyRule(("FACILITY", "EQ", 19, False, False), payload))
-        self.assertFalse(watcherInstance.applyRule(("FACILITY", "EQ", "autH", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("FACILITY", "EQ", 4, False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("FACILITY", "EQ", "autH", False, False), payload))
         self.assertTrue(watcherInstance.applyRule(("FACILITY", "EQ", "autH", False, True), payload))
         self.assertFalse(watcherInstance.applyRule(("FACILITY", "EQ", "auth", True, False), payload))
 
-        self.assertTrue(watcherInstance.applyRule(("FACILITY", "LT", "ntp", False, False), payload))
-        self.assertTrue(watcherInstance.applyRule(("FACILITY", "LT", 11, False, False), payload))
-        self.assertTrue(watcherInstance.applyRule(("FACILITY", "LT", "unknown", False, False), payload))
-        self.assertFalse(watcherInstance.applyRule(("FACILITY", "LT", "kern", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("FACILITY", "LT", "ntp", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("FACILITY", "LT", 12, False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("FACILITY", "LT", "unknown", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("FACILITY", "LT", "kern", False, False), payload))
         self.assertFalse(watcherInstance.applyRule(("FACILITY", "LT", "ntP", False, False), payload))
-        self.assertTrue(watcherInstance.applyRule(("FACILITY", "LT", "ntP", False, True), payload))
-        self.assertFalse(watcherInstance.applyRule(("FACILITY", "LT", "ntp", True, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("FACILITY", "LT", "ntP", False, True), payload))
+        self.assertTrue(watcherInstance.applyRule(("FACILITY", "LT", "ntp", True, False), payload))
 
-        self.assertTrue(watcherInstance.applyRule(("FACILITY", "GT", "kern", False, False), payload))
-        self.assertTrue(watcherInstance.applyRule(("FACILITY", "GT", 23, False, False), payload))
-        self.assertFalse(watcherInstance.applyRule(("FACILITY", "GT", "unknown", False, False), payload))
-        self.assertFalse(watcherInstance.applyRule(("FACILITY", "GT", "ntp", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("FACILITY", "GT", "kern", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("FACILITY", "GT", 0, False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("FACILITY", "GT", "unknown", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("FACILITY", "GT", "ntp", False, False), payload))
         self.assertFalse(watcherInstance.applyRule(("FACILITY", "GT", "kerN", False, False), payload))
-        self.assertTrue(watcherInstance.applyRule(("FACILITY", "GT", "kerN", False, True), payload))
-        self.assertFalse(watcherInstance.applyRule(("FACILITY", "GT", "kern", True, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("FACILITY", "GT", "kerN", False, True), payload))
+        self.assertTrue(watcherInstance.applyRule(("FACILITY", "GT", "kern", True, False), payload))
 
         self.assertTrue(watcherInstance.applyRule(("FACILITY", "LE", "auth", False, False), payload))
-        self.assertTrue(watcherInstance.applyRule(("FACILITY", "LE", 19, False, False), payload))
-        self.assertTrue(watcherInstance.applyRule(("FACILITY", "LE", "ntp", False, False), payload))
-        self.assertFalse(watcherInstance.applyRule(("FACILITY", "LE", "kern", False, False), payload))
-        self.assertFalse(watcherInstance.applyRule(("FACILITY", "LE", "autH", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("FACILITY", "LE", 19, False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("FACILITY", "LE", "ntp", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("FACILITY", "LE", "kern", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("FACILITY", "LE", "autH", False, False), payload))
         self.assertTrue(watcherInstance.applyRule(("FACILITY", "LE", "autH", False, True), payload))
         self.assertFalse(watcherInstance.applyRule(("FACILITY", "LE", "auth", True, False), payload))
 
         self.assertTrue(watcherInstance.applyRule(("FACILITY", "GE", "auth", False, False), payload))
         self.assertTrue(watcherInstance.applyRule(("FACILITY", "GE", 19, False, False), payload))
-        self.assertTrue(watcherInstance.applyRule(("FACILITY", "GE", "kern", False, False), payload))
-        self.assertFalse(watcherInstance.applyRule(("FACILITY", "GE", "ntp", False, False), payload))
-        self.assertFalse(watcherInstance.applyRule(("FACILITY", "LE", "autH", False, False), payload))
+        self.assertFalse(watcherInstance.applyRule(("FACILITY", "GE", "kern", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("FACILITY", "GE", "ntp", False, False), payload))
+        self.assertTrue(watcherInstance.applyRule(("FACILITY", "LE", "autH", False, False), payload))
         self.assertTrue(watcherInstance.applyRule(("FACILITY", "LE", "autH", False, True), payload))
         self.assertFalse(watcherInstance.applyRule(("FACILITY", "LE", "auth", True, False), payload))
 
@@ -204,7 +209,7 @@ class TestLogWatch(unittest.TestCase):
 
     def test_combineMatch(self):
         # Case 1 - Single element rule tree
-        watcherInstance = watcher.LogWatch()
+        watcherInstance = watcher.LogWatch(0, None)
         watcherInstance.rules.value = "OLD_MATCH"
         watcherInstance.combineMatch("NEW_MATCH", "AND")
         self.assertDictEqual({"value": "AND", "left": {"value": "OLD_MATCH", "left": None, "right": None},
@@ -222,13 +227,13 @@ class TestLogWatch(unittest.TestCase):
 
     def test_delMatch(self):
         # Case 1 - Single element of rule tree
-        watcherInstance = watcher.LogWatch()
+        watcherInstance = watcher.LogWatch(0, None)
         watcherInstance.rules.value = "MATCH"
         watcherInstance.delMatch()
         self.assertDictEqual({"value": None, "left": None, "right": None}, watcherInstance.rules)
 
         # Case 2 - Internal element of rule tree
-        watcherInstance = watcher.LogWatch()
+        watcherInstance = watcher.LogWatch(0, None)
         watcherInstance.rules.value = "AND"
         watcherInstance.rules.left = Node("LEFT_MATCH")
         watcherInstance.rules.right = Node("RIGHT_MATCH")
@@ -237,18 +242,18 @@ class TestLogWatch(unittest.TestCase):
 
     def test_setMatch(self):
         # Case 1 - Empty rules
-        watcherInstance = watcher.LogWatch()
+        watcherInstance = watcher.LogWatch(0, None)
         watcherInstance.setMatch("MATCH")
         self.assertDictEqual({"value": "MATCH", "left": None, "right": None}, watcherInstance.rules)
 
         # Case 2 - Single element of rule tree
-        watcherInstance = watcher.LogWatch()
+        watcherInstance = watcher.LogWatch(0, None)
         watcherInstance.rules.value = "OLD_MATCH"
         watcherInstance.setMatch("NEW_MATCH")
         self.assertDictEqual({"value": "NEW_MATCH", "left": None, "right": None}, watcherInstance.rules)
 
         # Case 3 - Leaf of rule tree
-        watcherInstance = watcher.LogWatch()
+        watcherInstance = watcher.LogWatch(0, None)
         watcherInstance.rules.value = "AND"
         watcherInstance.rules.left = Node("OLD_LEFT_MATCH")
         watcherInstance.rules.right = Node("OLD_RIGHT_MATCH")
@@ -259,36 +264,39 @@ class TestLogWatch(unittest.TestCase):
                              watcherInstance.rules)
 
     def test_save(self):
-        watcherInstance = watcher.LogWatch("TEST_LOG_FILE")
-        watcherInstance.rules = Node("()")
-        watcherInstance.rules.left = Node("(0)")
-        watcherInstance.rules.right = Node("(1)")
-        watcherInstance.rules.left.left = Node("(0, 0)")
-        watcherInstance.rules.left.right = Node("(0, 1)")
-        watcherInstance.rules.right.left = Node("(1, 0)")
-        watcherInstance.rules.right.right = Node("(1, 1)")
-        watcherInstance.save("test_sample.json")
+        watcherInstance = watcher.LogWatch(0, None)
+        watcherInstance.rules = Node(())
+        watcherInstance.rules.left = Node((0, ))
+        watcherInstance.rules.right = Node((1, ))
+        watcherInstance.rules.left.left = Node((0, 0))
+        watcherInstance.rules.left.right = Node((0, 1))
+        watcherInstance.rules.right.left = Node((1, 0))
+        watcherInstance.rules.right.right = Node((1, 1))
+        watcherInstance.save()
 
-        with open("samples/test_sample.json") as f:
-            expected = f.read()
-        with open("test_sample.json") as f:
-            actual = f.read()
-        self.assertEqual(expected, actual)
-        os.remove("test_sample.json")
+        with sqlite3.connect("LogWatch.db") as conn:
+            c = conn.cursor()
+            dump = c.execute("""select * from LogWatch0;""").fetchall()
+
+        self.assertEqual([('()', '()'), ('(0,)', '(0,)'), ('(0, 0)', '(0, 0)'), ('(0, 1)', '(0, 1)'), ('(1,)', '(1,)'),
+                          ('(1, 0)', '(1, 0)'), ('(1, 1)', '(1, 1)')], dump)
+
+        os.remove("LogWatch.db")
 
     def test_load(self):
-        watcherInstance = watcher.LogWatch("TEST_LOG_FILE")
-        watcherInstance.rules = Node("()")
-        watcherInstance.rules.left = Node("(0)")
-        watcherInstance.rules.right = Node("(1)")
-        watcherInstance.rules.left.left = Node("(0, 0)")
-        watcherInstance.rules.left.right = Node("(0, 1)")
-        watcherInstance.rules.right.left = Node("(1, 0)")
-        watcherInstance.rules.right.right = Node("(1, 1)")
+        watcherInstance1 = watcher.LogWatch(0, None)
+        watcherInstance1.rules = Node(())
+        watcherInstance1.rules.left = Node((0, ))
+        watcherInstance1.rules.right = Node((1, ))
+        watcherInstance1.rules.left.left = Node((0, 0))
+        watcherInstance1.rules.left.right = Node((0, 1))
+        watcherInstance1.rules.right.left = Node((1, 0))
+        watcherInstance1.rules.right.right = Node((1, 1))
 
-        watcherInstance2 = watcher.LogWatch()
-        watcherInstance2.load("samples/test_sample.json")
-        self.assertEqual(watcherInstance.rules, watcherInstance2.rules)
+        watcherInstance2 = watcher.LogWatch(0, None)
+        watcherInstance2.database = "samples/test_db.db"
+        watcherInstance2.load()
+        self.assertEqual(watcherInstance1.rules, watcherInstance2.rules)
 
 
 def main():

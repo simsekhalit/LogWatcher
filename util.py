@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from ast import literal_eval
 import multiprocessing
 import socket
 import threading
@@ -45,15 +46,47 @@ class Node(dict):
                     raise AddressNotFoundError("Invalid address:", address)
             return tmp
 
-    def load(self, dict_):
+    def dump(self, path=()):
+        ret = ((path, self.value), )
+        if self.left:
+            ret += self.left.dump(path + (0, ))
+        if self.right:
+            ret += self.right.dump(path + (1, ))
+        return ret
+
+    def load(self, dump):
+        for row in dump:
+            path = literal_eval(row[0])
+            match = literal_eval(row[1])
+            self.insert(path, match)
+
+    def insert(self, path, match):
+        road = path
+        dst = self
+        while road:
+            if road[0] == 0:
+                if dst.left is None:
+                    dst.left = Node()
+                dst = dst.left
+            elif road[0] == 1:
+                if dst.right is None:
+                    dst.right = Node()
+                dst = dst.right
+            else:
+                raise AddressNotFoundError("Invalid address:", path)
+            road = road[1:]
+
+        dst.value = match
+
+    def loadJSON(self, dict_):
         if type(dict_["value"]) == list:
             self.value = tuple(dict_["value"])
         else:
             self.value = dict_["value"]
         if dict_["left"]:
-            self.left = Node().load(dict_["left"])
+            self.left = Node().loadJSON(dict_["left"])
         if dict_["right"]:
-            self.right = Node().load(dict_["right"])
+            self.right = Node().loadJSON(dict_["right"])
         return self
 
 
@@ -110,13 +143,3 @@ class SocketBuffer:
     def write(self, data):
         self.buffer.write(data.encode() + b"\n")
         self.buffer.flush()
-
-# class Observer:
-#     """Represents an observer(user) of a Logwatch object
-#     """
-#     def __init__(self, watcher):
-#         self.filteredLogs = []
-#         watcher.register(self)
-#
-#     def update(self, log):
-#         self.filteredLogs.append(log)
