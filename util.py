@@ -100,6 +100,7 @@ class LogCollector(multiprocessing.Process):
     def run(self):
         logParser = parser.Parser(True)
         collectorSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        collectorSock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         collectorSock.bind((self.hostAddress, self.port))
         while True:
             data, addr = collectorSock.recvfrom(4096)

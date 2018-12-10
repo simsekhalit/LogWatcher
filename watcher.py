@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from ast import literal_eval
 import ipaddress
 import multiprocessing
 import re
@@ -20,7 +21,7 @@ class LogWatchManager:
         self.clientTrackers = {}
         self.clientTrackersLock = threading.Lock()
         self.hostAddress = "localhost"
-        self.udpPort = 514
+        self.udpPort = 5140
         self.tcpPort = 2470
         self.selector = selectors.DefaultSelector()
 
@@ -43,10 +44,11 @@ class LogWatchManager:
                 # serverPipe: New client is connected.
                 elif key.data == 1:
                     sock, addr = key.fileobj.accept()
-                    thread = threading.Thread(target=self.clientHandler, args=addr)
+                    thread = threading.Thread(target=self.clientHandler, args=(addr,))
                     with self.clientTrackersLock:
                         self.clientTrackers[addr] = ClientTracker(thread, sock)
                     thread.start()
+                    print(addr, "connected.")
                 # LogWatch: A message has come from a LogWatch object
                 else:
                     log = key.fileobj.recv()
@@ -98,30 +100,37 @@ class LogWatchManager:
                 lwTracker = LogWatchTracker(process, parent_conn)
                 self.logWatchTrackers.append(lwTracker)
                 self.selector.register(parent_conn, selectors.EVENT_READ, lwTracker)
+            self.register(tracker, lwId)
             process.start()
+            print("LogWatch {} created.".format(lwId))
             with tracker.clientLock:
                 tracker.write("respond\n" + "Created Log Watch {}".format(lwId))
 
         def managerList():
             with self.logWatchTrackersLock:
-                ret = "\n".join(["+" if tracker in lw.registeredClients else " " + str(len(lw.logs)) for lw in self.logWatchTrackers if lw is not None])
+                ret = []
+                for i, lw in enumerate(self.logWatchTrackers):
+                    r = " + " if (tracker in lw.registeredClients) else "   "
+                    ret.append("LogWatch {}".format(i) + r + str(len(lw.logs)))
             with tracker.clientLock:
                 if ret:
-                    tracker.write("respond\n" + ret)
+                    tracker.write("respond\n" + ".".join(ret))
                 else:
                     tracker.write("respond\n" + "-")
 
         def managerRegister():
+            data = tracker.read()
             try:
-                ret = self.register(tracker, int(data[1]))
+                ret = self.register(tracker, int(data))
             except Exception as e:
                 ret = str(e)
             with tracker.clientLock:
                 tracker.write("respond\n" + ret)
 
         def managerUnregister():
+            data = tracker.read()
             try:
-                ret = self.unregister(tracker, int(data[1]))
+                ret = self.unregister(tracker, int(data))
             except Exception as e:
                 ret = str(e)
             with tracker.clientLock:
@@ -129,7 +138,9 @@ class LogWatchManager:
 
         def lwSetMatch():
             try:
-                lwId = int(data[1])
+                lwId = int(tracker.read())
+                match = literal_eval(tracker.read())
+                address = literal_eval(tracker.read)
                 ret = " "
                 with self.logWatchTrackersLock:
                     if lwId >= len(self.logWatchTrackers) or not self.logWatchTrackers[lwId]:
@@ -138,15 +149,9 @@ class LogWatchManager:
                     else:
                         lw = self.logWatchTrackers[lwId]
                 if lw:
-                    args = re.search("(\(.*\)) (\(.*\))", data[2:])
-                    if not args:
-                        ret = "Invalid Command"
-                    else:
-                        match = args[0]
-                        address = tuple(map(int, args[1]))
-                        with lw.lwLock:
-                            lw.pipe.write(("setMatch", (match, address)))
-                            ret = "Request is sent"
+                    with lw.lwLock:
+                        lw.pipe.write(("setMatch", (match, address)))
+                        ret = "Request is sent"
             except Exception as e:
                 ret = str(e)
             tracker.write("respond\n" + ret)
@@ -235,6 +240,16 @@ class LogWatchManager:
                 ret = str(e)
             tracker.write("respond\n" + ret)
 
+        def terminate():
+            with self.logWatchTrackersLock:
+                for lw in self.logWatchTrackers:
+                    if tracker in lw.registeredClients:
+                        del lw.registeredClients[tracker]
+            with self.clientTrackersLock:
+                del self.clientTrackers[addr]
+            print(addr, "terminated.")
+            exit(0)
+
         tracker = self.clientTrackers[addr]
         managerMethods = {"create": managerCreate, "list": managerList, "register": managerRegister,
                           "unregister": managerUnregister}
@@ -242,19 +257,15 @@ class LogWatchManager:
                      "loadJSON": lwLoad}
         while True:
             data = tracker.read()
-            data = data.split(' ')
 
-            # LogWatchManager Method
-            if data[0] in managerMethods:
-                managerMethods[data[0]]()
-            elif data[0] in lwMethods:
-                lwMethods[data[0]]()
-            elif data[0] == "select":
-                tracker.selectedWatcher = int(data[1])
-                tracker.write("Success")
-
-            if tracker.selectedWatcher is None:
-                tracker.write()
+            if not data:
+                terminate()
+            elif data in managerMethods:
+                managerMethods[data]()
+            elif data in lwMethods:
+                lwMethods[data]()
+            else:
+                tracker.write("respond\n" + "Invalid command")
 
     def startLogCollector(self):
         collectorPipe, externalPipe = multiprocessing.Pipe()
@@ -264,6 +275,7 @@ class LogWatchManager:
 
     def startServer(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind((self.hostAddress, self.tcpPort))
         sock.listen(10)
         self.selector.register(sock, selectors.EVENT_READ, 1)
@@ -460,3 +472,8 @@ class LogWatch(multiprocessing.Process):
             c = conn.cursor()
             dump = c.execute("""select * from LogWatch{};""".format(self.lwId)).fetchall()
         self.rules.load(dump)
+
+
+if __name__ == "__main__":
+    lwm = LogWatchManager()
+    lwm.start()
