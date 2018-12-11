@@ -114,7 +114,7 @@ class LogWatchTracker:
         self.pipe = pipe
         self.logs = []
         self.lwLock = threading.Lock()
-        self.registeredClients = []
+        self.registeredClients = set()
 
 
 class ClientTracker:

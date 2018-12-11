@@ -40,7 +40,7 @@ class LogWatchManager:
                     with self.logSourcesLock:
                         if addr in self.logSources:
                             for lw in self.logSources[addr]:
-                                lw.pipe.send(addr, payload)
+                                lw.pipe.send(("log", payload))
                 # serverPipe: New client is connected.
                 elif key.data == 1:
                     sock, addr = key.fileobj.accept()
@@ -63,7 +63,7 @@ class LogWatchManager:
                 lw = self.logWatchTrackers[lwId]
             with lw.lwLock:
                 if client not in lw.registeredClients:
-                    lw.registeredClients.append(client)
+                    lw.registeredClients.add(client)
                     return "Registered to LogWatch {}".format(lwId)
                 else:
                     return "Already registered to LogWatch {}".format(lwId)
@@ -174,7 +174,7 @@ class LogWatchManager:
                     else:
                         lw = self.logWatchTrackers[lwId]
                         with lw.lwLock:
-                            lw.pipe.send(("setMatch", match, connector, address))
+                            lw.pipe.send(("combineMatch", match, connector, address))
                             ret = "Request is sent."
             except Exception as e:
                 ret = str(e)
@@ -184,7 +184,6 @@ class LogWatchManager:
             try:
                 lwId = int(data[1])
                 address = literal_eval(data[2])
-                ret = " "
                 with self.logWatchTrackersLock:
                     if lwId >= len(self.logWatchTrackers) or not self.logWatchTrackers[lwId]:
                         ret = "LogWatch {} does not exists.".format(lwId)
@@ -231,7 +230,7 @@ class LogWatchManager:
             with self.logWatchTrackersLock:
                 for lw in self.logWatchTrackers:
                     if tracker in lw.registeredClients:
-                        del lw.registeredClients[tracker]
+                        lw.registeredClients.remove(tracker)
             with self.clientTrackersLock:
                 del self.clientTrackers[addr]
             print(addr, "disconnected.")
