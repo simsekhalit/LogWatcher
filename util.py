@@ -92,7 +92,7 @@ class Node(dict):
 
 class LogCollector(multiprocessing.Process):
     def __init__(self, hostAddress, port, pipe):
-        super(LogCollector, self).__init__()
+        super(LogCollector, self).__init__(daemon=True)
         self.hostAddress = hostAddress
         self.port = port
         self.pipe = pipe
@@ -122,14 +122,12 @@ class ClientTracker:
         self.clientLock = threading.Lock()
         self.thread = thread
         self.sock = sock
-        self.buffer = sock.makefile("brw")
 
     def read(self):
-        return self.buffer.readline().decode()[:-1]
+        return self.sock.recv(4096).decode()
 
     def write(self, data):
-        self.buffer.write(data.encode() + b"\n")
-        self.buffer.flush()
+        self.sock.sendall(data.encode())
 
 
 class SocketBuffer:

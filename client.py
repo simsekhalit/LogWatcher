@@ -1,15 +1,9 @@
 #!/usr/bin/env python3
 import cmd
+import os
 import re
 import socket
 import threading
-from util import SocketBuffer
-
-
-class LogWatchClient(threading.Thread):
-    def __init__(self):
-        super(LogWatchClient, self).__init__()
-        filteredLogs = {}
 
 
 class ClientLoop(cmd.Cmd):
@@ -20,29 +14,37 @@ class ClientLoop(cmd.Cmd):
         self.server = ("localhost", 2470)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect(self.server)
-        self.buffer = SocketBuffer(self.sock)
         self.logs = {}
         self.respondCV = threading.Condition()
-        self.respond = ""
+        self.respond = None
         self.sockLock = threading.Lock()
-        self.receiver = threading.Thread(target=self.receive_logs)
+        self.receiver = threading.Thread(target=self.receive_logs, daemon=True)
         self.receiver.start()
 
+    def read(self):
+        return self.sock.recv(4096).decode()
+
+    def write(self, data):
+        self.sock.sendall(data.encode())
+
     def receive_logs(self):
-        header = self.buffer.read()
-        while header:
-            if header == "log":
-                lwId = int(self.buffer.read())
-                data = self.buffer.read()
-                self.logs[int(lwId)].append(data)
-            elif header == "respond":
-                respond = self.buffer.read()
+        data = self.read().split("\n")
+        while data[0]:
+            if data[0] == "log":
+                lwId = int(data[1])
+                log = data[2]
+                self.logs[lwId].append(log)
+            elif data[0] == "respond":
+                respond = "\n".join(data[1:])
                 with self.respondCV:
                     self.respond = respond
                     self.respondCV.notify()
             else:
                 pass
-            header = self.buffer.read()
+            data = self.read().split("\n")
+
+        print("Server shutdown.")
+        exit(0)
 
     def get_respond(self):
         with self.respondCV:
@@ -53,41 +55,80 @@ class ClientLoop(cmd.Cmd):
         pass
 
     def do_create(self, args):
-        self.buffer.write("create")
+        self.write("create")
         print(self.get_respond())
 
     def do_list(self, args):
-        self.buffer.write("list")
-        print(self.get_respond().replace(".", "\n"))
+        self.write("list")
+        print(self.get_respond())
 
     def do_register(self, args):
         if args.isdigit():
-            self.buffer.write("register\n" + args)
+            self.write("register\n" + args)
             print(self.get_respond())
         else:
             print("Invalid command")
 
     def do_unregister(self, args):
         if args.isdigit():
-            self.buffer.write("unregister\n" + args)
+            self.write("unregister\n" + args)
+            print(self.get_respond())
+        else:
+            print("Invalid command")
+
+    def do_printRules(self, args):
+        if args.isdigit():
+            self.write("printRules\n" + args)
             print(self.get_respond())
         else:
             print("Invalid command")
 
     def do_setMatch(self, args):
-        args = args.split(' ')
-        lwId = args[0]
-        args = "".join(args[1:])
-        args = re.search("(\(.*\)) (\(.*\))", args)
+        args = re.search("(\d+) (\(.*\)) (\(.*\))", args)
         if not args:
             print("Invalid Command")
             return
-        match = args.group(1)
+        lwId = args.group(1)
+        match = args.group(2)
+        address = args.group(3)
+        self.write("setMatch\n" + lwId + "\n" + match + "\n" + address)
+        print(self.get_respond())
+
+    def do_combineMatch(self, args):
+        args = re.search("(\d+) (\(.*\)) (AND|OR) (\(.*\))", args)
+        if not args:
+            print("Invalid Command")
+            return
+        lwId = args.group(1)
+        match = args.group(2)
+        connector = args.group(3)
+        address = args.group(4)
+        self.write("combineMatch\n" + lwId + "\n" + match + "\n" + connector + "\n" + address)
+        print(self.get_respond())
+
+    def do_delMatch(self, args):
+        args = re.search("(\d+) (\(.*\))", args)
+        if not args:
+            print("Invalid Command")
+            return
+        lwId = args.group(1)
         address = args.group(2)
-        self.buffer.write("setMatch\n" + match + "\n" + address)
-        with self.respondCV:
-            self.respondCV.wait()
-        print(self.respond)
+        self.write("delMatch\n" + lwId + "\n" + address)
+        print(self.get_respond())
+
+    def do_save(self, args):
+        if args.isdigit():
+            self.write("save\n" + args)
+            print(self.get_respond())
+        else:
+            print("Invalid command")
+
+    def do_load(self, args):
+        if args.isdigit():
+            self.write("load\n" + args)
+            print(self.get_respond())
+        else:
+            print("Invalid command")
 
     def do_EOF(self, arg):
         print()

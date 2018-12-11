@@ -36,7 +36,7 @@ class LogWatchManager:
             for key, _ in events:
                 # collectorPipe
                 if key.data == 0:
-                    addr, payload = key.fileobj.recv()
+                    addr, payload = key.fileobj.recvfrom(4096)
                     with self.logSourcesLock:
                         if addr in self.logSources:
                             for lw in self.logSources[addr]:
@@ -44,7 +44,7 @@ class LogWatchManager:
                 # serverPipe: New client is connected.
                 elif key.data == 1:
                     sock, addr = key.fileobj.accept()
-                    thread = threading.Thread(target=self.clientHandler, args=(addr,))
+                    thread = threading.Thread(target=self.clientHandler, args=(addr,), daemon=True)
                     with self.clientTrackersLock:
                         self.clientTrackers[addr] = ClientTracker(thread, sock)
                     thread.start()
@@ -104,7 +104,7 @@ class LogWatchManager:
             process.start()
             print("LogWatch {} created.".format(lwId))
             with tracker.clientLock:
-                tracker.write("respond\n" + "Created Log Watch {}".format(lwId))
+                tracker.write("respond\n" + "LogWatch {} created.".format(lwId))
 
         def managerList():
             with self.logWatchTrackersLock:
@@ -114,44 +114,50 @@ class LogWatchManager:
                     ret.append("LogWatch {}".format(i) + r + str(len(lw.logs)))
             with tracker.clientLock:
                 if ret:
-                    tracker.write("respond\n" + ".".join(ret))
+                    tracker.write("respond\n" + "\n".join(ret))
                 else:
                     tracker.write("respond\n" + "-")
 
         def managerRegister():
-            data = tracker.read()
             try:
-                ret = self.register(tracker, int(data))
+                ret = self.register(tracker, int(data[1]))
             except Exception as e:
                 ret = str(e)
             with tracker.clientLock:
                 tracker.write("respond\n" + ret)
 
         def managerUnregister():
-            data = tracker.read()
             try:
-                ret = self.unregister(tracker, int(data))
+                ret = self.unregister(tracker, int(data[1]))
             except Exception as e:
                 ret = str(e)
             with tracker.clientLock:
                 tracker.write("respond\n" + ret)
 
+        def lwPrintRules():
+            try:
+                lwId = int(data[1])
+                with sqlite3.connect("LogWatch.db") as conn:
+                    c = conn.cursor()
+                    dump = c.execute("""select * from LogWatch{};""".format(lwId)).fetchall()
+                ret = "\n".join(map(str, dump))
+            except Exception as e:
+                ret = str(e)
+            tracker.write("respond\n" + ret)
+
         def lwSetMatch():
             try:
-                lwId = int(tracker.read())
-                match = literal_eval(tracker.read())
-                address = literal_eval(tracker.read)
-                ret = " "
+                lwId = int(data[1])
+                match = literal_eval(data[2])
+                address = literal_eval(data[3])
                 with self.logWatchTrackersLock:
                     if lwId >= len(self.logWatchTrackers) or not self.logWatchTrackers[lwId]:
                         ret = "LogWatch {} does not exists.".format(lwId)
-                        lw = None
                     else:
                         lw = self.logWatchTrackers[lwId]
-                if lw:
-                    with lw.lwLock:
-                        lw.pipe.write(("setMatch", (match, address)))
-                        ret = "Request is sent"
+                        with lw.lwLock:
+                            lw.pipe.send(("setMatch", match, address))
+                            ret = "Request is sent."
             except Exception as e:
                 ret = str(e)
             tracker.write("respond\n" + ret)
@@ -159,24 +165,17 @@ class LogWatchManager:
         def lwCombineMatch():
             try:
                 lwId = int(data[1])
-                ret = " "
+                match = literal_eval(data[2])
+                connector = data[3]
+                address = literal_eval(data[4])
                 with self.logWatchTrackersLock:
                     if lwId >= len(self.logWatchTrackers) or not self.logWatchTrackers[lwId]:
                         ret = "LogWatch {} does not exists.".format(lwId)
-                        lw = None
                     else:
                         lw = self.logWatchTrackers[lwId]
-                if lw:
-                    args = re.search("(\(.*\)) (AND|OR) (\(.*\))", data[2:])
-                    if not args:
-                        ret = "Invalid Command"
-                    else:
-                        match = args[0]
-                        connector = args[1]
-                        address = tuple(map(int, args[1]))
                         with lw.lwLock:
-                            lw.pipe.write(("setMatch", (match, connector, address)))
-                            ret = "Request is sent"
+                            lw.pipe.send(("setMatch", match, connector, address))
+                            ret = "Request is sent."
             except Exception as e:
                 ret = str(e)
             tracker.write("respond\n" + ret)
@@ -184,22 +183,16 @@ class LogWatchManager:
         def lwDelMatch():
             try:
                 lwId = int(data[1])
+                address = literal_eval(data[2])
                 ret = " "
                 with self.logWatchTrackersLock:
                     if lwId >= len(self.logWatchTrackers) or not self.logWatchTrackers[lwId]:
                         ret = "LogWatch {} does not exists.".format(lwId)
-                        lw = None
                     else:
                         lw = self.logWatchTrackers[lwId]
-                if lw:
-                    args = re.search("(\(.*\))", data[2:])
-                    if not args:
-                        ret = "Invalid Command"
-                    else:
-                        address = tuple(map(int, args[0]))
                         with lw.lwLock:
-                            lw.pipe.write(("setMatch", (address, )))
-                            ret = "Request is sent"
+                            lw.pipe.send(("delMatch", address))
+                            ret = "Request is sent."
             except Exception as e:
                 ret = str(e)
             tracker.write("respond\n" + ret)
@@ -207,17 +200,14 @@ class LogWatchManager:
         def lwSave():
             try:
                 lwId = int(data[1])
-                ret = " "
                 with self.logWatchTrackersLock:
                     if lwId >= len(self.logWatchTrackers) or not self.logWatchTrackers[lwId]:
                         ret = "LogWatch {} does not exists.".format(lwId)
-                        lw = None
                     else:
                         lw = self.logWatchTrackers[lwId]
-                if lw:
-                    with lw.lwLock:
-                        lw.pipe.write(("save", ))
-                        ret = "Request is sent"
+                        with lw.lwLock:
+                            lw.pipe.send(("save",))
+                            ret = "Request is sent."
             except Exception as e:
                 ret = str(e)
             tracker.write("respond\n" + ret)
@@ -225,17 +215,14 @@ class LogWatchManager:
         def lwLoad():
             try:
                 lwId = int(data[1])
-                ret = " "
                 with self.logWatchTrackersLock:
                     if lwId >= len(self.logWatchTrackers) or not self.logWatchTrackers[lwId]:
                         ret = "LogWatch {} does not exists.".format(lwId)
-                        lw = None
                     else:
                         lw = self.logWatchTrackers[lwId]
-                if lw:
-                    with lw.lwLock:
-                        lw.pipe.write(("loadJSON", ))
-                        ret = "Request is sent"
+                        with lw.lwLock:
+                            lw.pipe.send(("load",))
+                            ret = "Request is sent."
             except Exception as e:
                 ret = str(e)
             tracker.write("respond\n" + ret)
@@ -247,23 +234,22 @@ class LogWatchManager:
                         del lw.registeredClients[tracker]
             with self.clientTrackersLock:
                 del self.clientTrackers[addr]
-            print(addr, "terminated.")
+            print(addr, "disconnected.")
             exit(0)
 
         tracker = self.clientTrackers[addr]
         managerMethods = {"create": managerCreate, "list": managerList, "register": managerRegister,
                           "unregister": managerUnregister}
-        lwMethods = {"setMatch": lwSetMatch, "combineMatch": lwCombineMatch, "delMatch": lwDelMatch, "save": lwSave,
+        lwMethods = {"printRules": lwPrintRules, "setMatch": lwSetMatch, "combineMatch": lwCombineMatch, "delMatch": lwDelMatch, "save": lwSave,
                      "loadJSON": lwLoad}
         while True:
-            data = tracker.read()
-
-            if not data:
+            data = tracker.read().split("\n")
+            if not data[0]:
                 terminate()
-            elif data in managerMethods:
-                managerMethods[data]()
-            elif data in lwMethods:
-                lwMethods[data]()
+            elif data[0] in managerMethods:
+                managerMethods[data[0]]()
+            elif data[0] in lwMethods:
+                lwMethods[data[0]]()
             else:
                 tracker.write("respond\n" + "Invalid command")
 
@@ -298,14 +284,14 @@ class LogWatch(multiprocessing.Process):
         data = self.pipe.recv()
         while data:
             if data[0] == "setMatch":
-                self.setMatch(*data[1:])
+                self.setMatch(data[1], data[2])
             elif data[0] == "combineMatch":
-                self.combineMatch(*data[1:])
+                self.combineMatch(data[1], data[2], data[3])
             elif data[0] == "delMatch":
-                self.delMatch(*data[1:])
+                self.delMatch(data[1])
             elif data[0] == "save":
                 self.save()
-            elif data[0] == "loadJSON":
+            elif data[0] == "load":
                 self.load()
             elif data[0] == "log":
                 if self.applyFilters(self.rules, data[1].as_dict()):
