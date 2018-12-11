@@ -36,11 +36,11 @@ class LogWatchManager:
             for key, _ in events:
                 # collectorPipe
                 if key.data == 0:
-                    addr, payload = key.fileobj.recvfrom(4096)
-                    with self.logSourcesLock:
-                        if addr in self.logSources:
-                            for lw in self.logSources[addr]:
-                                lw.pipe.send(("log", payload))
+                    payload = key.fileobj.recv()
+                    print(payload)
+                    # with self.logWatchTrackersLock:
+                    #     for lw in self.logWatchTrackers:
+                    #         lw.pipe.send(("log", payload))
                 # serverPipe: New client is connected.
                 elif key.data == 1:
                     sock, addr = key.fileobj.accept()

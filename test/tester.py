@@ -21,6 +21,7 @@ def runUnitTests():
     suite.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_util))
     unittest.TextTestRunner(verbosity=3).run(suite)
 
+
 # TODO: Extend test Integration test cases and sample logs/results etc.
 # Integration tests
 def runIntegrationTests():
