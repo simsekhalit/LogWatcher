@@ -27,7 +27,7 @@ def runUnitTests():
 def runIntegrationTests():
     # Step 1 - Loading rules
     logFile = "samples/sample.log"
-    watcherInstance = watcher.LogWatch(logFile)
+    watcherInstance = watcher.LogWatch(0, None)
     watcherInstance.setMatch(("WHOLE", "EQ", "NOTE: Not using GLX TFP!", False, True))
     watcherInstance.combineMatch(("WHOLE", "RE", ".*Anacron.*", False, False), "OR")
     watcherInstance.combineMatch(("WHOLE", "RE", ".*anacron.*", False, False), "OR", (1,))
@@ -41,27 +41,7 @@ def runIntegrationTests():
     with open("samples/sample_conf.json", "rb") as f:
         sampleRules = util.Node().loadJSON(json.load(f)["rules"])
     assert sampleRules == watcherInstance.rules
-    print("Rules are loaded successfully.", file=sys.stderr)
-
-    # TODO: Run distinct test cases for parseSocket = False and parseSocket = True
-    # Step 2 - Running Log Watcher
-    watcherInstance.run()
-
-    # Asserting if logs are filtered successfully
-    with open("samples/sample_result") as f:
-        result = f.read()
-    assert str(watcherInstance.filteredLogs) == result
-    print("Logs are filtered successfully.", file=sys.stderr)
-
-    # Step 3 - Saving and loading
-    watcherInstance.save("test_sample.json")
-    watcherInstance2 = watcher.LogWatch()
-    watcherInstance2.load("test_sample.json")
-    os.remove("test_sample.json")
-
-    # Asserting if rules are saved and loaded successfully
-    assert watcherInstance.rules == watcherInstance2.rules
-    print("Rules are saved and loaded successfully.", file=sys.stderr)
+    print("Rules are created successfully.", file=sys.stderr)
 
 
 def main():
