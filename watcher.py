@@ -37,10 +37,9 @@ class LogWatchManager:
                 # collectorPipe
                 if key.data == 0:
                     payload = key.fileobj.recv()
-                    print(payload)
-                    # with self.logWatchTrackersLock:
-                    #     for lw in self.logWatchTrackers:
-                    #         lw.pipe.send(("log", payload))
+                    with self.logWatchTrackersLock:
+                        for lw in self.logWatchTrackers:
+                            lw.pipe.send(("log", payload))
                 # serverPipe: New client is connected.
                 elif key.data == 1:
                     sock, addr = key.fileobj.accept()
@@ -332,6 +331,9 @@ class LogWatch(multiprocessing.Process):
             return self.applyRule(rules.value, payload)
 
     def applyRule(self, rule, payload):
+        if not rule:
+            return False
+
         class InvalidMatchfield(Exception):
             pass
 

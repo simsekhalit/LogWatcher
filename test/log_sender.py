@@ -12,5 +12,5 @@ with open("samples/sample.log", "br") as log_source:
 
     while log:
         sock.sendto(log,server)
-        # time.sleep(0.1)
+        time.sleep(1)
         log = log_source.readline()
