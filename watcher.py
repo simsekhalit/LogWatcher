@@ -134,13 +134,36 @@ class LogWatchManager:
             with tracker.clientLock:
                 tracker.write("respond\n" + ret)
 
+        def lwPrintLogs():
+            try:
+                lwId = int(data[1])
+                with self.logWatchTrackersLock:
+                    if lwId >= len(self.logWatchTrackers):
+                        tracker.write("respond\n" + "LogWatch {} does not exists.".format(lwId))
+                        return
+                    logs = self.logWatchTrackers[lwId].logs
+                    if logs:
+                        ret = "\n".join(self.logWatchTrackers[lwId].logs)
+                    else:
+                        ret = "-"
+            except Exception as e:
+                ret = str(e)
+            tracker.write("respond\n" + ret)
+
         def lwPrintRules():
             try:
                 lwId = int(data[1])
+                with self.logWatchTrackersLock:
+                    if lwId >= len(self.logWatchTrackers):
+                        tracker.write("respond\n" + "LogWatch {} does not exists.".format(lwId))
+                        return
                 with sqlite3.connect("LogWatch.db") as conn:
                     c = conn.cursor()
                     dump = c.execute("""select * from LogWatch{};""".format(lwId)).fetchall()
-                ret = "\n".join(map(str, dump))
+                if dump:
+                    ret = "\n".join(map(str, dump))
+                else:
+                    ret = "-"
             except Exception as e:
                 ret = str(e)
             tracker.write("respond\n" + ret)
@@ -239,7 +262,7 @@ class LogWatchManager:
         tracker = self.clientTrackers[addr]
         managerMethods = {"create": managerCreate, "list": managerList, "register": managerRegister,
                           "unregister": managerUnregister}
-        lwMethods = {"printRules": lwPrintRules, "setMatch": lwSetMatch, "combineMatch": lwCombineMatch, "delMatch": lwDelMatch, "save": lwSave,
+        lwMethods = {"printLogs": lwPrintLogs, "printRules": lwPrintRules, "setMatch": lwSetMatch, "combineMatch": lwCombineMatch, "delMatch": lwDelMatch, "save": lwSave,
                      "loadJSON": lwLoad}
         while True:
             data = tracker.read().split("\n")

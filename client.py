@@ -76,6 +76,13 @@ class ClientLoop(cmd.Cmd):
         else:
             print("Invalid command")
 
+    def do_printLogs(self, args):
+        if args.isdigit():
+            self.write("printLogs\n" + args)
+            print(self.get_respond())
+        else:
+            print("Invalid command")
+
     def do_printRules(self, args):
         if args.isdigit():
             self.write("printRules\n" + args)
