@@ -10,7 +10,7 @@ class ClientLoop(cmd.Cmd):
     def __init__(self):
         super(ClientLoop, self).__init__()
         self.prompt = "> "
-        self.intro = "Available commands are setMatch, combineMatch, delMatch"
+        self.intro = "Please type help to see available commands."
         self.server = ("localhost", 2470)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect(self.server)
