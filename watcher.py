@@ -429,37 +429,46 @@ class LogWatch(multiprocessing.Process):
 
     # Set addressed Node to given "match" value.
     def setMatch(self, match, address=()):
-        self.rules.getNode(address).value = match
+        if self.rules.getNode(address).value == "OR" or self.rules.getNode(address).value == "AND":
+            print("Cant set rule at Logwatch {} since address {} is not a leaf".format(self.lwId, address))
+        else:
+            self.rules.getNode(address).value = match
 
     # Set the the addressed node to given "connector" value. ("AND" or "OR")
     # Left branch of connector will be the previous node's match value, right branch will be the new match value.
     def combineMatch(self, match, connector, address=()):
-        node = self.rules.getNode(address)
-        temp = node.value
-        node.value = connector
-        node.left = Node(temp)
-        node.right = Node(match)
+        if self.rules.getNode(address).value == "OR" or self.rules.getNode(address).value == "AND":
+            print("Cant combine rule at Logwatch {} since address {} is not a leaf".format(self.lwId, address))
+        else:
+            node = self.rules.getNode(address)
+            temp = node.value
+            node.value = connector
+            node.left = Node(temp)
+            node.right = Node(match)
 
     # Delete the node at given address, the sibling of the node will replace the parent logical operator.
     def delMatch(self, address=()):
-        # Deleting the rules
-        if address == ():
-            if self.rules.left is None and self.rules.right is None:
-                self.rules.value = None
-                self.rules.left = None
-                self.rules.right = None
+        if self.rules.getNode(address).value == "OR" or self.rules.getNode(address).value == "AND":
+            print("Cant delete rule at Logwatch {} since address {} is not a leaf".format(self.lwId, address))
         else:
-            parentNode = self.rules.getNode(address[:-1])
-            if address[-1] == 0:
-                survivorNode = parentNode.right
-            elif address[-1] == 1:
-                survivorNode = parentNode.left
+            # Deleting the rules
+            if address == ():
+                if self.rules.left is None and self.rules.right is None:
+                    self.rules.value = None
+                    self.rules.left = None
+                    self.rules.right = None
             else:
-                print("Invalid address:", address, file=sys.stderr)
-                return
-            parentNode.value = survivorNode.value
-            parentNode.left = survivorNode.left
-            parentNode.right = survivorNode.right
+                parentNode = self.rules.getNode(address[:-1])
+                if address[-1] == 0:
+                    survivorNode = parentNode.right
+                elif address[-1] == 1:
+                    survivorNode = parentNode.left
+                else:
+                    print("Invalid address:", address, file=sys.stderr)
+                    return
+                parentNode.value = survivorNode.value
+                parentNode.left = survivorNode.left
+                parentNode.right = survivorNode.right
 
     # Save current configuration to database
     def save(self):
@@ -471,7 +480,7 @@ class LogWatch(multiprocessing.Process):
             except:
                 pass
             try:
-                a = c.execute("""create table LogWatch{}(path TEXT, rule TEXT, PRIMARY KEY (path), UNIQUE (rule))""".format(self.lwId))
+                a = c.execute("""create table LogWatch{}(path TEXT, rule TEXT, PRIMARY KEY (path))""".format(self.lwId))
             except:
                 pass
             for row in dump:

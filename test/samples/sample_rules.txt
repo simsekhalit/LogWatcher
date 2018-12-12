@@ -1,0 +1,18 @@
+# Three clients will construct a rule tree on a LogWatch with id = 0
+# Following rules needs to be applied in order on specified client
+
+Client-1
+    create
+    setMatch 0 ("SEVERITY", "GT", "crit", False, False) ()
+    combineMatch 0 ("IP", "EQ", "halit", False, False) AND ()
+
+Client-2
+    combineMatch 0 ("IP", "EQ", "yavuz", False, False) OR (1,)
+    combineMatch 0 ("FIELD:0: ", "EQ", "disabling", False, False) OR (0,)
+    combineMatch 0 ("FACILITY", "GT", "ntp", False, False) AND (0,0)
+
+Client-3
+    combineMatch 0 ("RE:.*su root.* (?P<event>.*ed).*on (?P<event_location>.+):event_location", "EQ", "/dev/pts/8", False, False) OR (0,1)
+    combineMatch 0 ("IP", "EQ", "142.35.24.45", False, False) OR (1,0)
+    combineMatch 0 ("IP", "EQ", "48.122.25.156", False, False) OR (1,1)
+    save 0

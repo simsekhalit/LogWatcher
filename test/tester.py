@@ -6,11 +6,11 @@ import test_logWatch
 import test_parser
 import test_util
 import unittest
+import watcher
+import util
 testdir = os.path.dirname(__file__)
 srcdir = '../'
 sys.path.insert(0, os.path.abspath(os.path.join(testdir, srcdir)))
-import watcher
-import util
 
 
 # Unit tests
@@ -25,6 +25,8 @@ def runUnitTests():
 # TODO: Extend test Integration test cases and sample logs/results etc.
 # Integration tests
 def runIntegrationTests():
+
+    # LogWatch test for save/load from Json
     # Step 1 - Loading rules
     logFile = "samples/sample.log"
     watcherInstance = watcher.LogWatch(0, None)
