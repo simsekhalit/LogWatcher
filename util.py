@@ -104,7 +104,7 @@ class LogCollector(multiprocessing.Process):
         collectorSock.bind((self.hostAddress, self.port))
         while True:
             data, addr = collectorSock.recvfrom(4096)
-            payload = logParser.parse(data.decode())
+            payload = logParser.parse(data.decode().rstrip())
             self.pipe.send(payload)
 
 

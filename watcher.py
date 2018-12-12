@@ -2,6 +2,7 @@
 from ast import literal_eval
 import ipaddress
 import multiprocessing
+import os
 import re
 import selectors
 import socket
@@ -316,7 +317,7 @@ class LogWatch(multiprocessing.Process):
                 self.load()
             elif data[0] == "log":
                 if self.applyFilters(self.rules, data[1].as_dict()):
-                    self.pipe.send(str(data[1]))
+                    self.pipe.send(str(self.lwId) + '\n' + str(data[1]))
             else:
                 pass
             data = self.pipe.recv()
@@ -470,11 +471,11 @@ class LogWatch(multiprocessing.Process):
             except:
                 pass
             try:
-                a = c.execute("""create table LogWatch{}(path TEXT, rule TEXT)""".format(self.lwId))
+                a = c.execute("""create table LogWatch{}(path TEXT, rule TEXT, PRIMARY KEY (path), UNIQUE (rule))""".format(self.lwId))
             except:
                 pass
             for row in dump:
-                c.execute("""insert into LogWatch{} (path, rule) values (\"{}\", \"{}\")""".format(0, row[0], row[1]))
+                c.execute("""insert into LogWatch{} (path, rule) values (\"{}\", \"{}\")""".format(self.lwId, row[0], row[1]))
 
     # Load configuration from database
     def load(self):
@@ -486,4 +487,6 @@ class LogWatch(multiprocessing.Process):
 
 if __name__ == "__main__":
     lwm = LogWatchManager()
+    if os.path.exists("LogWatch.db"):
+        os.remove("LogWatch.db")
     lwm.start()

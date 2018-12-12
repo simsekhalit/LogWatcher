@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import cmd
-import os
 import re
 import socket
 import threading
@@ -15,6 +14,7 @@ class ClientLoop(cmd.Cmd):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect(self.server)
         self.logs = {}
+        self.notifications = {}
         self.respondCV = threading.Condition()
         self.respond = None
         self.sockLock = threading.Lock()
@@ -33,6 +33,8 @@ class ClientLoop(cmd.Cmd):
             if data[0] == "log":
                 lwId = int(data[1])
                 log = data[2]
+                if lwId not in self.logs.keys():
+                    self.logs[lwId] = []
                 self.logs[lwId].append(log)
             elif data[0] == "respond":
                 respond = "\n".join(data[1:])
