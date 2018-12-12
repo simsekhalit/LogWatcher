@@ -14,7 +14,7 @@ class ClientLoop(cmd.Cmd):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect(self.server)
         self.logs = {}
-        self.notifications = {}
+        self.registeredLws = []
         self.respondCV = threading.Condition()
         self.respond = None
         self.sockLock = threading.Lock()
@@ -37,6 +37,8 @@ class ClientLoop(cmd.Cmd):
                     self.logs[lwId] = []
                 self.logs[lwId].append(log)
             elif data[0] == "respond":
+                if "created" in data[1]:
+                    self.registeredLws.append(int(data[1][9]))
                 respond = "\n".join(data[1:])
                 with self.respondCV:
                     self.respond = respond
@@ -66,6 +68,7 @@ class ClientLoop(cmd.Cmd):
 
     def do_register(self, args):
         if args.isdigit():
+            self.registeredLws.append(int(args))
             self.write("register\n" + args)
             print(self.get_respond())
         else:
@@ -73,6 +76,7 @@ class ClientLoop(cmd.Cmd):
 
     def do_unregister(self, args):
         if args.isdigit():
+            self.registeredLws.remove(int(args))
             self.write("unregister\n" + args)
             print(self.get_respond())
         else:
@@ -82,6 +86,19 @@ class ClientLoop(cmd.Cmd):
         if args.isdigit():
             self.write("printLogs\n" + args)
             print(self.get_respond())
+        else:
+            print("Invalid command")
+
+    def do_printNotifications(self, args):
+        if args.isdigit():
+            if int(args) not in self.registeredLws:
+                print("Not registered to LogWatch {}".format(args))
+            else:
+                if int(args) not in self.logs.keys():
+                    print("-")
+                else:
+                    for log in self.logs[int(args)]:
+                        print(log)
         else:
             print("Invalid command")
 

@@ -143,7 +143,7 @@ class LogWatchManager:
                         return
                     logs = self.logWatchTrackers[lwId].logs
                     if logs:
-                        ret = "\n".join(self.logWatchTrackers[lwId].logs)
+                        ret = "\n".join(re.sub(".*\n(?P<logPart>.*)", "\g<logPart>", log) for log in self.logWatchTrackers[lwId].logs)
                     else:
                         ret = "-"
             except Exception as e:
