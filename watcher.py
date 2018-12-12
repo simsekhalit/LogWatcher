@@ -52,7 +52,8 @@ class LogWatchManager:
                 # LogWatch: A message has come from a LogWatch object
                 else:
                     log = key.fileobj.recv()
-                    key.data.logs.append(log)
+                    if log not in key.data.logs:
+                        key.data.logs.append(log)
                     self.notify(key.data, log)
 
     def register(self, client, lwId):

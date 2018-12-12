@@ -35,7 +35,8 @@ class ClientLoop(cmd.Cmd):
                 log = data[2]
                 if lwId not in self.logs.keys():
                     self.logs[lwId] = []
-                self.logs[lwId].append(log)
+                if log not in self.logs[lwId]:
+                    self.logs[lwId].append(log)
             elif data[0] == "respond":
                 if "created" in data[1]:
                     self.registeredLws.append(int(data[1][9]))
