@@ -1,4 +1,5 @@
-__pycache__/
-LogWatch.db
+__pycache__
+db.sqlite3
 .idea
 venv
+migrations
