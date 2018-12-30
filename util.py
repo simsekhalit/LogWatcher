@@ -56,12 +56,12 @@ class Node(dict):
 
     def load(self, dump):
         for row in dump:
-            node_id = row[0]
+            rule_id = row[0]
             if row[1] == "AND" or row[1] == "OR":
                 match = row[1]
             else:
                 match = literal_eval(row[1])
-            path = reverseAddress(node_id)
+            path = reverseAddress(rule_id)
             self.insert(path, match)
 
     def insert(self, path, match):
@@ -156,3 +156,9 @@ class SocketBuffer:
     def write(self, data):
         self.sock.send("\n".join(data).encode())
 
+
+class UDSBuffer(SocketBuffer):
+    def __init__(self):
+        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.sock.connect(UDSAddr)
+        super(UDSBuffer, self).__init__(self.sock, UDSAddr)

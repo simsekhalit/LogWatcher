@@ -4,7 +4,7 @@
 		<div align="right">
 		{% if request.user.is_authenticated %}
 			User: {{ request.user }} 
-			<a href="/accounts/logout?next=/index">Logout</a>
+			<a href="/accounts/logout?next=/">Logout</a>
 		{% endif %}
 		</div>
 		<div>
