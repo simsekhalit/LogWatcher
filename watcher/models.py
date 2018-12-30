@@ -22,7 +22,7 @@ class WatcherLogs(models.Model):
 class WatcherRules(models.Model):
 	"""Table which tracks all LogWatch object tables"""
 	class Meta:
-		unique_together = ("wid", "node_id", "rule")
+		unique_together = ("wid", "rule_id", "rule")
 	wid = models.IntegerField()
-	node_id = models.IntegerField()
+	rule_id = models.IntegerField()
 	rule = models.TextField()

@@ -306,7 +306,7 @@ class LogWatch(multiprocessing.Process):
         nodeID = resolveAddress(address)
         with sqlite3.connect(database) as conn:
             c = conn.cursor()
-            c.execute("""update watcher_watcherrules set rule = '{}' where wid == {} and node_id == {};""".format(
+            c.execute("""update watcher_watcherrules set rule = '{}' where wid == {} and rule_id == {};""".format(
                 match, self.lwID, nodeID))
 
     # Set the the addressed node to given "connector" value. ("AND" or "OR")
@@ -328,11 +328,11 @@ class LogWatch(multiprocessing.Process):
         nodeID = resolveAddress(address)
         with sqlite3.connect(database) as conn:
             c = conn.cursor()
-            c.execute("""update watcher_watcherrules set node_id = {} where wid == {} and node_id == {}""".format(
+            c.execute("""update watcher_watcherrules set rule_id = {} where wid == {} and rule_id == {}""".format(
                 nodeID * 2, self.lwID, nodeID))
-            c.execute("""insert into watcher_watcherrules(wid, node_id, rule) values ({}, {}, '{}')""".format(
+            c.execute("""insert into watcher_watcherrules(wid, rule_id, rule) values ({}, {}, '{}')""".format(
                 self.lwID, nodeID, connector))
-            c.execute("""insert into watcher_watcherrules(wid, node_id, rule) values ({}, {}, '{}')""".format(
+            c.execute("""insert into watcher_watcherrules(wid, rule_id, rule) values ({}, {}, '{}')""".format(
                 self.lwID, nodeID * 2 + 1, match))
 
     # Delete the node at given address, the sibling of the node will replace the parent logical operator.
@@ -373,28 +373,28 @@ class LogWatch(multiprocessing.Process):
         nodeID = resolveAddress(address)
         with sqlite3.connect(database) as conn:
             c = conn.cursor()
-            c.execute("""delete from watcher_watcherrules where wid == {} and node_id == {};""".format(
+            c.execute("""delete from watcher_watcherrules where wid == {} and rule_id == {};""".format(
                 self.lwID, nodeID))
             if nodeID == 1:
                 return
-            c.execute("""delete from watcher_watcherrules where wid == {} and node_id == {};""".format(
+            c.execute("""delete from watcher_watcherrules where wid == {} and rule_id == {};""".format(
                 self.lwID, nodeID / 2))
 
             nodeID += -1 if nodeID % 2 else 1
 
-            nodes = c.execute("""select id, node_id from watcher_watcherrules where wid == {} order by node_id""".format(self.lwID)).fetchall()
+            nodes = c.execute("""select id, rule_id from watcher_watcherrules where wid == {} order by rule_id""".format(self.lwID)).fetchall()
 
             mapper = getMappedID(nodeID / 2)
 
             for node in nodes:
-                c.execute("""update watcher_watcherrules set node_id = {} where id == {}""".format(
+                c.execute("""update watcher_watcherrules set rule_id = {} where id == {}""".format(
                     next(mapper), node[0]))
 
     # Load configuration from database
     def load(self):
         with sqlite3.connect(database) as conn:
             c = conn.cursor()
-            rules = c.execute("""select node_id, rule from watcher_watcherrules where wid == {} order by node_id;""".format(self.lwID)).fetchall()
+            rules = c.execute("""select rule_id, rule from watcher_watcherrules where wid == {} order by rule_id;""".format(self.lwID)).fetchall()
             logs = c.execute("""select source, log from watcher_watcherlogs where wid == {};""".format(self.lwID)).fetchall()
         self.rules.load(rules)
         self.logs = set(logs)
