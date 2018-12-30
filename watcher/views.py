@@ -27,25 +27,6 @@ def rules(request, wid=None):
 
 
 @login_required
-def init_db(request):
-	"""Shows details about a log watcher object."""
-
-	Watchers.objects.create(wid=0, name="Best Watcher")
-	Watchers.objects.create(wid=1, name="Good Watcher")
-	Watchers.objects.create(wid=2, name="Fast Watcher")
-
-	WatcherRules.objects.create(wid=0, path="", rule="")
-	WatcherRules.objects.create(wid=1, path="", rule="")
-	WatcherRules.objects.create(wid=2, path="", rule="")
-
-	WatcherLogs.objects.create(wid=0, log="")
-	WatcherLogs.objects.create(wid=1, log="")
-	WatcherLogs.objects.create(wid=2, log="")
-
-	return redirect(index)
-
-
-@login_required
 def index(request):
 	"""Home page which shows active Watcher instances."""
 	watchers = []

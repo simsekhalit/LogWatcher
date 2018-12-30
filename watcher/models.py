@@ -11,16 +11,18 @@ class Watchers(models.Model):
 
 
 class WatcherLogs(models.Model):
+	"""Watcher logs table"""
 	class Meta:
 		unique_together = ("wid", "log")
 	wid = models.IntegerField()
+	source = models.TextField()
 	log = models.TextField()
 
 
 class WatcherRules(models.Model):
 	"""Table which tracks all LogWatch object tables"""
 	class Meta:
-		unique_together = ("wid", "rule")
+		unique_together = ("wid", "node_id", "rule")
 	wid = models.IntegerField()
+	node_id = models.IntegerField()
 	rule = models.TextField()
-	path = models.TextField()

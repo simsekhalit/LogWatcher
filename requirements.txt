@@ -1,2 +1,3 @@
-pyparsing==2.3.0
+Django==2.1.4
+pytz==2018.7
 syslog-rfc5424-parser==0.1.4

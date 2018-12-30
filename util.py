@@ -2,15 +2,14 @@
 from ast import literal_eval
 import multiprocessing
 import socket
-import threading
 import parser
 
+collectorPort = 5140
+UDSAddr = "./UDS"
+database = "db.sqlite3"
 
-class AddressNotFoundError(Exception):
-    pass
 
-
-class NotAnObserverError(Exception):
+class InvalidNodeAddress(Exception):
     pass
 
 
@@ -18,15 +17,16 @@ class Node(dict):
     """Represents a binary tree node.
     """
 
-    def __init__(self, value=None, left=None, right=None):
+    def __init__(self, nodeID=1, value=None, left=None, right=None):
         super().__init__()
         self.__dict__ = self
+        self.id = nodeID
         self.value = value
         self.left = left
         self.right = right
 
     # Return node at given address
-    def getNode(self, address=()):
+    def getNode(self, address):
         if address == ():
             return self
         else:
@@ -36,14 +36,14 @@ class Node(dict):
                     if tmp.left is not None:
                         tmp = tmp.left
                     else:
-                        raise AddressNotFoundError("Could not find node at given address:", address)
+                        raise InvalidNodeAddress("Could not find node at given address:", address)
                 elif step == 1:
                     if tmp.right is not None:
                         tmp = tmp.right
                     else:
-                        raise AddressNotFoundError("Could not find node at given address:", address)
+                        raise InvalidNodeAddress("Could not find node at given address:", address)
                 else:
-                    raise AddressNotFoundError("Invalid address:", address)
+                    raise InvalidNodeAddress("Invalid address:", address)
             return tmp
 
     def dump(self, path=()):
@@ -56,24 +56,29 @@ class Node(dict):
 
     def load(self, dump):
         for row in dump:
-            path = literal_eval(row[0])
-            match = literal_eval(row[1])
+            node_id = row[0]
+            if row[1] == "AND" or row[1] == "OR":
+                match = row[1]
+            else:
+                match = literal_eval(row[1])
+            path = reverseAddress(node_id)
             self.insert(path, match)
 
     def insert(self, path, match):
+        # print(path, match)
         road = path
         dst = self
         while road:
             if road[0] == 0:
                 if dst.left is None:
-                    dst.left = Node()
+                    dst.left = Node(dst.id * 2)
                 dst = dst.left
             elif road[0] == 1:
                 if dst.right is None:
-                    dst.right = Node()
+                    dst.right = Node(dst.id * 2 + 1)
                 dst = dst.right
             else:
-                raise AddressNotFoundError("Invalid address:", path)
+                raise InvalidNodeAddress("Invalid address:", path)
             road = road[1:]
 
         dst.value = match
@@ -88,6 +93,25 @@ class Node(dict):
         if dict_["right"]:
             self.right = Node().loadJSON(dict_["right"])
         return self
+
+
+def resolveAddress(address):
+    nodeID = 1
+    for a in address:
+        nodeID = nodeID * 2 + (a ^ 0)
+    return nodeID
+
+
+def reverseAddress(nodeID):
+    address = []
+    while nodeID > 1:
+        if nodeID % 2 == 0:
+            address.append(0)
+        else:
+            address.append(1)
+        nodeID //= 2
+    address.reverse()
+    return address
 
 
 class LogCollector(multiprocessing.Process):
@@ -112,33 +136,23 @@ class LogWatchTracker:
     def __init__(self, process, pipe):
         self.process = process
         self.pipe = pipe
-        self.logs = []
-        self.lwLock = threading.Lock()
-        self.registeredClients = set()
-
-
-class ClientTracker:
-    def __init__(self, thread, sock):
-        self.clientLock = threading.Lock()
-        self.thread = thread
-        self.sock = sock
-
-    def read(self):
-        return self.sock.recv(4096).decode()
-
-    def write(self, data):
-        self.sock.sendall(data.encode())
+        self.lock = multiprocessing.Lock()
 
 
 class SocketBuffer:
-    def __init__(self, sock):
-        self.buffer = sock.makefile("brw")
+    def __init__(self, sock, addr):
         self.sock = sock
-        self.addr = sock.getpeername()
+        self.addr = addr
+
+    def recv(self):
+        return self.sock.recv(4096).decode().rstrip()
 
     def read(self):
-        return self.buffer.readline().decode().rstrip()
+        return self.sock.recv(4096).decode().rstrip().split("\n")
+
+    def send(self, data):
+        self.sock.send(data.rstrip().encode())
 
     def write(self, data):
-        self.buffer.write(data.encode() + b"\n")
-        self.buffer.flush()
+        self.sock.send("\n".join(data).encode())
+
