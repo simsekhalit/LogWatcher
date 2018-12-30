@@ -21,6 +21,7 @@ class LogWatchManager:
         self.selector = selectors.DefaultSelector()
 
     def start(self):
+        self.initWatchers()
         self.startLogCollector()
         self.startServer()
         self.run()
@@ -61,17 +62,25 @@ class LogWatchManager:
             sock.send((2).to_bytes(1, byteorder="big"))
             print(e)
 
-    def createWatcher(self):
+    def createWatcher(self, lwID=None, name=None, soft=False):
         try:
             with self.logWatchTrackersLock:
-                lwID = len(self.logWatchTrackers)
+                if not lwID:
+                    lwID = len(self.logWatchTrackers)
+                if not name:
+                    name = "LogWatch {}".format(lwID)
                 parent_conn, child_conn = multiprocessing.Pipe()
                 process = LogWatch(lwID, child_conn)
                 lwTracker = LogWatchTracker(process, parent_conn)
                 self.logWatchTrackers[lwID] = lwTracker
                 self.selector.register(parent_conn, selectors.EVENT_READ, lwTracker)
+                if not soft:
+                    with sqlite3.connect(database) as conn:
+                        c = conn.cursor()
+                        c.execute("""insert into watcher_watchers (wid, name) values ({}, '{}'});""".format(lwID, name))
             process.start()
-            print("LogWatch {} created.".format(lwID), file=sys.stderr)
+
+            print("{} created.".format(name), file=sys.stderr)
             return True
         except Exception as e:
             print(e, file=sys.stderr)
@@ -131,6 +140,14 @@ class LogWatchManager:
         except Exception as e:
             print(e, file=sys.stderr)
             return False
+
+    def initWatchers(self):
+        with sqlite3.connect(database) as conn:
+            c = conn.cursor()
+            watchers = c.execute("""select wid, name from watcher_watchers;""").fetchall()
+
+        for watcher in watchers:
+            self.createWatcher(watcher[0], watcher[1], soft=True)
 
     def startLogCollector(self):
         collectorPipe, externalPipe = multiprocessing.Pipe()
@@ -395,14 +412,11 @@ class LogWatch(multiprocessing.Process):
         with sqlite3.connect(database) as conn:
             c = conn.cursor()
             rules = c.execute("""select rule_id, rule from watcher_watcherrules where wid == {} order by rule_id;""".format(self.lwID)).fetchall()
-            logs = c.execute("""select source, log from watcher_watcherlogs where wid == {};""".format(self.lwID)).fetchall()
+            logs = c.execute("""select log from watcher_watcherlogs where wid == {};""".format(self.lwID)).fetchall()
         self.rules.load(rules)
         self.logs = set(logs)
 
 
 if __name__ == "__main__":
-    # lwm = LogWatchManager()
-    lw = LogWatch(0, None)
-    print(lw.rules)
-    lw.delMatch((0,))
-    print(lw.rules)
+    lwm = LogWatchManager()
+    lwm.start()

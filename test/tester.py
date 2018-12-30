@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 import json
 import os
+import sqlite3
 import sys
-import test_logWatch
-import test_parser
-import test_util
 import unittest
-import watcher
+import lwmanager
 import util
 
 testdir = os.path.dirname(__file__)
@@ -26,9 +24,11 @@ def runUnitTests():
 # TODO: Extend test Integration test cases and sample logs/results etc.
 # Integration tests
 def runIntegrationTests():
+    # Load database
+    createTestDatabase()
 
-    # LogWatch test for save/load from Json
-    # Step 1 - Loading rules
+    exit()
+
     logFile = "samples/sample.log"
     watcherInstance = watcher.LogWatch(0, None)
     watcherInstance.setMatch(("WHOLE", "EQ", "NOTE: Not using GLX TFP!", False, True))
@@ -47,8 +47,20 @@ def runIntegrationTests():
     print("Rules are created successfully.", file=sys.stderr)
 
 
+def createTestDatabase():
+    with sqlite3.connect("../db.sqlite3") as conn:
+        c = conn.cursor()
+        for i in range(3):
+            c.execute("""insert into watcher_watchers(wid, name) values ({}, '{}');""".format(i, "Watcher {}".format(i)))
+
+            for j in range(1, 8):
+                c.execute("""insert into watcher_watcherrules(wid, rule_id, rule) values({}, {}, '{}')""".format(
+                    i, j, ()))
+                c.execute("""insert into watcher_watcherlogs(wid, log) values({}, '{}')""".format(i, "log{}".format(j)))
+
+
 def main():
-    runUnitTests()
+    # runUnitTests()
     runIntegrationTests()
     print("\nAll tests are completed successfully.", file=sys.stderr)
 

@@ -15,7 +15,6 @@ class WatcherLogs(models.Model):
 	class Meta:
 		unique_together = ("wid", "log")
 	wid = models.IntegerField()
-	source = models.TextField()
 	log = models.TextField()
 
 
