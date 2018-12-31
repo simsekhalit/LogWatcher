@@ -3,6 +3,7 @@ from ast import literal_eval
 import multiprocessing
 import socket
 import parser
+import threading
 
 collectorPort = 5140
 UDSAddr = "./UDS"
@@ -111,7 +112,7 @@ def reverseAddress(nodeID):
             address.append(1)
         nodeID //= 2
     address.reverse()
-    return address
+    return tuple(address)
 
 
 class LogCollector(multiprocessing.Process):
@@ -126,17 +127,21 @@ class LogCollector(multiprocessing.Process):
         collectorSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         collectorSock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         collectorSock.bind((self.hostAddress, self.port))
-        while True:
-            data, addr = collectorSock.recvfrom(4096)
-            payload = logParser.parse(data.decode().rstrip())
-            self.pipe.send(payload)
+
+        try:
+            while True:
+                data, addr = collectorSock.recvfrom(4096)
+                payload = logParser.parse(data.decode().rstrip())
+                self.pipe.send(payload)
+        except KeyboardInterrupt:
+            exit()
 
 
 class LogWatchTracker:
     def __init__(self, process, pipe):
         self.process = process
         self.pipe = pipe
-        self.lock = multiprocessing.Lock()
+        self.lock = threading.Lock()
 
 
 class SocketBuffer:

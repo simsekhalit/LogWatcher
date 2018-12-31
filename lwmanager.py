@@ -27,118 +27,104 @@ class LogWatchManager:
         self.run()
 
     def run(self):
-        while True:
-            events = self.selector.select()
-            for key, _ in events:
-                # collectorPipe
-                if key.data == 0:
-                    payload = key.fileobj.recv()
-                    with self.logWatchTrackersLock:
-                        for lw in self.logWatchTrackers:
-                            lw.pipe.send(("log", payload))
+        try:
+            while True:
+                events = self.selector.select()
+                for key, _ in events:
+                    # collectorPipe
+                    if key.data == 0:
+                        payload = key.fileobj.recv()
+                        with self.logWatchTrackersLock:
+                            for lw in self.logWatchTrackers:
+                                with lw.lock:
+                                    lw.pipe.send(("log", payload))
 
-                # serverPipe: New client is connected.
-                elif key.data == 1:
-                    sock, addr = key.fileobj.accept()
-                    thread = threading.Thread(target=self.clientHandler, args=(sock, addr), daemon=True)
-                    thread.start()
-                    print("{} connected.".format(addr))
+                    # serverPipe: New client is connected.
+                    elif key.data == 1:
+                        sock, addr = key.fileobj.accept()
+                        thread = threading.Thread(target=self.clientHandler, args=(sock, addr), daemon=True)
+                        thread.start()
+        except KeyboardInterrupt:
+            exit()
 
     def clientHandler(self, sock, addr):
-        methodsTable = {"setMatch": self.setMatch, "combineMatch": self.combineMatch, "delMatch": self.delMatch}
+        methodsTable = {"create": self.createWatcher, "setMatch": self.setMatch, "combineMatch": self.combineMatch,
+                        "delMatch": self.delMatch}
 
-        data = sock.recv().split("\n")
+        data = sock.recv(4096).decode().split("\n")
+        print(data, file=sys.stderr)
         try:
-            if data[0] == "create":
-                ret = self.createWatcher()
-            else:
-                ret = methodsTable[data[0]]("\n".join(data[1]))
+            ret = methodsTable[data[0]](*data[1:])
 
             if ret:
-                sock.send((0).to_bytes(1, byteorder="big"))
+                sock.send(b"0")
             else:
-                sock.send((1).to_bytes(1, byteorder="big"))
+                sock.send(b"1")
         except Exception as e:
-            sock.send((2).to_bytes(1, byteorder="big"))
-            print(e)
+            sock.send(b"2")
+            print("Log Watch Manager: {} ({})".format(e, addr))
+        sock.close()
 
     def createWatcher(self, lwID=None, name=None, soft=False):
-        try:
-            with self.logWatchTrackersLock:
-                if not lwID:
-                    lwID = len(self.logWatchTrackers)
-                if not name:
-                    name = "LogWatch {}".format(lwID)
-                parent_conn, child_conn = multiprocessing.Pipe()
-                process = LogWatch(lwID, child_conn)
-                lwTracker = LogWatchTracker(process, parent_conn)
-                self.logWatchTrackers[lwID] = lwTracker
-                self.selector.register(parent_conn, selectors.EVENT_READ, lwTracker)
-                if not soft:
-                    with sqlite3.connect(database) as conn:
-                        c = conn.cursor()
-                        c.execute("""insert into watcher_watchers (wid, name) values ({}, '{}'});""".format(lwID, name))
-            process.start()
+        with self.logWatchTrackersLock:
+            if not lwID:
+                lwID = len(self.logWatchTrackers)
+            if not name:
+                name = "Watcher {}".format(lwID)
+            parent_conn, child_conn = multiprocessing.Pipe()
+            process = LogWatch(lwID, name, child_conn)
+            lwTracker = LogWatchTracker(process, parent_conn)
+            self.logWatchTrackers[lwID] = lwTracker
+            self.selector.register(parent_conn, selectors.EVENT_READ, lwTracker)
+            if not soft:
+                with sqlite3.connect(database) as conn:
+                    c = conn.cursor()
+                    c.execute("""insert into watcher_watchers (wid, name) values ({}, '{}');""".format(lwID, name))
+                print("{} created.".format(name), file=sys.stderr)
+        process.start()
+        print("{} started.".format(name), file=sys.stderr)
+        return True
 
-            print("{} created.".format(name), file=sys.stderr)
+    def setMatch(self, lwID, match, address):
+        lwID = int(lwID)
+        match = literal_eval(match)
+        address = literal_eval(address)
+        with self.logWatchTrackersLock:
+            lw = self.logWatchTrackers[lwID]
+        with lw.lock:
+            lw.pipe.send(("setMatch", match, address))
+            response = lw.pipe.recv()
+        if response == "0":
             return True
-        except Exception as e:
-            print(e, file=sys.stderr)
+        else:
             return False
 
-    def setMatch(self, lwID, data):
-        try:
-            match = literal_eval(data[0])
-            address = literal_eval(data[1])
-            with self.logWatchTrackersLock:
-                lw = self.logWatchTrackers[lwID]
-            with lw.lock:
-                lw.pipe.send(("setMatch", match, address))
-                response = lw.pipe.recv()
-            if response == 0:
-                return True
-            else:
-                print(response, file=sys.stderr)
-                return False
-
-        except Exception as e:
-            print(e, file=sys.stderr)
+    def combineMatch(self, lwID, match, connector, address):
+        lwID = int(lwID)
+        match = literal_eval(match)
+        connector = connector
+        address = literal_eval(address)
+        with self.logWatchTrackersLock:
+            lw = self.logWatchTrackers[lwID]
+        with lw.lock:
+            lw.pipe.send(("combineMatch", match, connector, address))
+            response = lw.pipe.recv()
+        if response == "0":
+            return True
+        else:
             return False
 
-    def combineMatch(self, lwID, data):
-        try:
-            match = literal_eval(data[0])
-            connector = data[1]
-            address = literal_eval(data[2])
-            with self.logWatchTrackersLock:
-                lw = self.logWatchTrackers[lwID]
-            with lw.lock:
-                lw.pipe.send(("combineMatch", match, connector, address))
-                response = lw.pipe.read()
-            if response == 0:
-                return True
-            else:
-                print(response, file=sys.stderr)
-                return False
-        except Exception as e:
-            print(e, file=sys.stderr)
-            return False
-
-    def delMatch(self, lwID, data):
-        try:
-            address = literal_eval(data[0])
-            with self.logWatchTrackersLock:
-                lw = self.logWatchTrackers[lwID]
-            with lw.lock:
-                lw.pipe.send(("delMatch", address))
-                response = lw.pipe.read()
-            if response == 0:
-                return True
-            else:
-                print(response, file=sys.stderr)
-                return False
-        except Exception as e:
-            print(e, file=sys.stderr)
+    def delMatch(self, lwID, address):
+        lwID = int(lwID)
+        address = literal_eval(address)
+        with self.logWatchTrackersLock:
+            lw = self.logWatchTrackers[lwID]
+        with lw.lock:
+            lw.pipe.send(("delMatch", address))
+            response = lw.pipe.recv()
+        if response == "0":
+            return True
+        else:
             return False
 
     def initWatchers(self):
@@ -175,9 +161,10 @@ class LogWatch(multiprocessing.Process):
     matchfield -> one of (WHOLE, IP, SEVERITY, FACILITY, FIELD:range:sep, RE:regexp:field)
     """
 
-    def __init__(self, lwID, pipe):
+    def __init__(self, lwID, name, pipe):
         super(LogWatch, self).__init__(daemon=True)
         self.lwID = lwID
+        self.name = name
         self.pipe = pipe
         self.rules = Node()
         self.logs = set()
@@ -197,12 +184,14 @@ class LogWatch(multiprocessing.Process):
                     self.delMatch(*data[1:])
                 elif data[0] == "log":
                     if self.applyFilters(self.rules, data[1].as_dict()):
-                        self.pipe.send(str(self.lwID) + '\n' + str(data[1]))
+                        self.logs.add(str(data[1]))
+                        self.saveLog(str(data[1]))
                 else:
-                    pass
+                    raise Exception("Invalid LogWatch command")
+                self.pipe.send("0")
             except Exception as e:
-                print(e, file=sys.stderr)
-                self.pipe.send(False)
+                print("Log Watch {} ({}): {}".format(self.lwID, self.name, e), file=sys.stderr)
+                self.pipe.send("1")
 
     def applyFilters(self, rules, payload):
         if rules.value == "AND":
@@ -317,19 +306,13 @@ class LogWatch(multiprocessing.Process):
         node.value = match
 
         # Update database
-        self.setMatchDB(match, address)
-
-    def setMatchDB(self, match, address):
-        nodeID = resolveAddress(address)
-        with sqlite3.connect(database) as conn:
-            c = conn.cursor()
-            c.execute("""update watcher_watcherrules set rule = '{}' where wid == {} and rule_id == {};""".format(
-                match, self.lwID, nodeID))
+        self.saveRules()
 
     # Set the the addressed node to given "connector" value. ("AND" or "OR")
     # Left branch of connector will be the previous node's match value, right branch will be the new match value.
     def combineMatch(self, match, connector, address):
         node = self.rules.getNode(address)
+        print(node)
         if node.left is not None or node.right is not None:
             raise InvalidNodeAddress("Cant combine rule at LogWatch {} since address {} is not a leaf".format(self.lwID,
                                                                                                               address))
@@ -339,18 +322,7 @@ class LogWatch(multiprocessing.Process):
         node.right = Node(node.id * 2 + 1, match)
 
         # Update database
-        self.combineMatchDB(match, connector, address)
-
-    def combineMatchDB(self, match, connector, address):
-        nodeID = resolveAddress(address)
-        with sqlite3.connect(database) as conn:
-            c = conn.cursor()
-            c.execute("""update watcher_watcherrules set rule_id = {} where wid == {} and rule_id == {}""".format(
-                nodeID * 2, self.lwID, nodeID))
-            c.execute("""insert into watcher_watcherrules(wid, rule_id, rule) values ({}, {}, '{}')""".format(
-                self.lwID, nodeID, connector))
-            c.execute("""insert into watcher_watcherrules(wid, rule_id, rule) values ({}, {}, '{}')""".format(
-                self.lwID, nodeID * 2 + 1, match))
+        self.saveRules()
 
     # Delete the node at given address, the sibling of the node will replace the parent logical operator.
     def delMatch(self, address):
@@ -374,38 +346,22 @@ class LogWatch(multiprocessing.Process):
             parentNode.right = survivorNode.right
 
         # Update database
-        self.delMatchDB(address)
+        self.saveRules()
 
-    def delMatchDB(self, address):
-        def getMappedID(a):
-            queue = [a]
-            while True:
-                x = len(queue)
-                for i in range(x):
-                    ret = queue.pop(0)
-                    queue.append(ret * 2)
-                    queue.append(ret * 2 + 1)
-                    yield ret
-
-        nodeID = resolveAddress(address)
+    def saveLog(self, log):
         with sqlite3.connect(database) as conn:
             c = conn.cursor()
-            c.execute("""delete from watcher_watcherrules where wid == {} and rule_id == {};""".format(
-                self.lwID, nodeID))
-            if nodeID == 1:
-                return
-            c.execute("""delete from watcher_watcherrules where wid == {} and rule_id == {};""".format(
-                self.lwID, nodeID / 2))
+            c.execute("""insert into watcher_watcherlogs(wid, log) values({}, \"{}\")""".format(self.lwID, log))
 
-            nodeID += -1 if nodeID % 2 else 1
-
-            nodes = c.execute("""select id, rule_id from watcher_watcherrules where wid == {} order by rule_id""".format(self.lwID)).fetchall()
-
-            mapper = getMappedID(nodeID / 2)
-
-            for node in nodes:
-                c.execute("""update watcher_watcherrules set rule_id = {} where id == {}""".format(
-                    next(mapper), node[0]))
+    def saveRules(self):
+        dump = self.rules.dump()
+        with sqlite3.connect(database) as conn:
+            c = conn.cursor()
+            c.execute("""delete from watcher_watcherrules where wid == {};""".format(self.lwID))
+            for row in dump:
+                print(row, file=sys.stderr)
+                c.execute("""insert into watcher_watcherrules (wid, rule_id, rule) values ({}, {}, \"{}\")""".format(
+                    self.lwID, resolveAddress(row[0]), row[1]))
 
     # Load configuration from database
     def load(self):
