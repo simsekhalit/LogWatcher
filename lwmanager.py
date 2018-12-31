@@ -35,7 +35,7 @@ class LogWatchManager:
                     if key.data == 0:
                         payload = key.fileobj.recv()
                         with self.logWatchTrackersLock:
-                            for lw in self.logWatchTrackers:
+                            for lw in self.logWatchTrackers.values():
                                 with lw.lock:
                                     lw.pipe.send(("log", payload))
 
@@ -52,7 +52,6 @@ class LogWatchManager:
                         "delMatch": self.delMatch}
 
         data = sock.recv(4096).decode().split("\n")
-        print(data, file=sys.stderr)
         try:
             ret = methodsTable[data[0]](*data[1:])
 
@@ -80,6 +79,8 @@ class LogWatchManager:
                 with sqlite3.connect(database) as conn:
                     c = conn.cursor()
                     c.execute("""insert into watcher_watchers (wid, name) values ({}, '{}');""".format(lwID, name))
+                    c.execute("""insert into watcher_watcherrules(wid, rule_id, rule) values({}, {}, '{}')""".format(
+                        lwID, 1, ()))
                 print("{} created.".format(name), file=sys.stderr)
         process.start()
         print("{} started.".format(name), file=sys.stderr)
@@ -312,7 +313,6 @@ class LogWatch(multiprocessing.Process):
     # Left branch of connector will be the previous node's match value, right branch will be the new match value.
     def combineMatch(self, match, connector, address):
         node = self.rules.getNode(address)
-        print(node)
         if node.left is not None or node.right is not None:
             raise InvalidNodeAddress("Cant combine rule at LogWatch {} since address {} is not a leaf".format(self.lwID,
                                                                                                               address))
@@ -359,7 +359,6 @@ class LogWatch(multiprocessing.Process):
             c = conn.cursor()
             c.execute("""delete from watcher_watcherrules where wid == {};""".format(self.lwID))
             for row in dump:
-                print(row, file=sys.stderr)
                 c.execute("""insert into watcher_watcherrules (wid, rule_id, rule) values ({}, {}, \"{}\")""".format(
                     self.lwID, resolveAddress(row[0]), row[1]))
 
