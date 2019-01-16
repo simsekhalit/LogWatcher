@@ -36,7 +36,7 @@ def rules(request, lwID=None):
     """Shows and updates rules of a Watcher instance."""
     if request.method == "GET":
         _rules = getRules(lwID)
-        return render(request, "rules.html", {"rules": _rules, "lw": "LogWatch " + str(lwID)})
+        return render(request, "rules.html", {"rules": _rules, "name": getWatcher(lwID)[0]})
     elif request.POST['submit'] == 'SetMatch':
         path = request.POST['path']
         if path == 'NONE':
@@ -47,13 +47,13 @@ def rules(request, lwID=None):
         response = buffer.recv()
         _rules = getRules(lwID)
         if response == '0':
-            return render(request, "rules.html", {"rules": _rules, "lw": "Logwatch " + str(lwID),
+            return render(request, "rules.html", {"rules": _rules, "name": getWatcher(lwID)[0],
                                                   "op": "setMatch Operation was successful."})
         elif response == '2':
-            return render(request, "rules.html", {"rules": _rules, "lw": "Logwatch " + str(lwID),
+            return render(request, "rules.html", {"rules": _rules, "name": getWatcher(lwID)[0],
                                                   "op": "Please fill fields with correct types"})
         else:
-            return render(request, "rules.html", {"rules": _rules, "lw": "Logwatch " + str(lwID),
+            return render(request, "rules.html", {"rules": _rules, "name": getWatcher(lwID)[0],
                                                   "op": "setMatch Operation was not successful."})
     elif request.POST['submit'] == 'CombineMatch':
         path = request.POST['path']
@@ -66,13 +66,13 @@ def rules(request, lwID=None):
         response = buffer.recv()
         _rules = getRules(lwID)
         if response == '0':
-            return render(request, "rules.html", {"rules": _rules, "lw": "Logwatch " + str(lwID),
+            return render(request, "rules.html", {"rules": _rules, "name": getWatcher(lwID)[0],
                                                   "op": "CombineMatch Operation was successful."})
         elif response == '2':
-            return render(request, "rules.html", {"rules": _rules, "lw": "Logwatch " + str(lwID),
+            return render(request, "rules.html", {"rules": _rules, "name": getWatcher(lwID)[0],
                                                   "op": "Please fill fields with correct types"})
         else:
-            return render(request, "rules.html", {"rules": _rules, "lw": "Logwatch " + str(lwID),
+            return render(request, "rules.html", {"rules": _rules, "name": getWatcher(lwID)[0],
                                                   "op": "CombineMatch Operation was not successful."})
     elif request.POST['submit'] == 'DelMatch':
         path = request.POST['path']
@@ -83,13 +83,13 @@ def rules(request, lwID=None):
         response = buffer.recv()
         _rules = getRules(lwID)
         if response == '0':
-            return render(request, "rules.html", {"rules": _rules, "lw": "Logwatch " + str(lwID),
+            return render(request, "rules.html", {"rules": _rules, "name": getWatcher(lwID)[0],
                                                   "op": "DelMatch Operation was successful."})
         elif response == '2':
-            return render(request, "rules.html", {"rules": _rules, "lw": "Logwatch " + str(lwID),
+            return render(request, "rules.html", {"rules": _rules, "name": getWatcher(lwID)[0],
                                                   "op": "Please fill fields with correct types"})
         else:
-            return render(request, "rules.html", {"rules": _rules, "lw": "Logwatch " + str(lwID),
+            return render(request, "rules.html", {"rules": _rules, "name": getWatcher(lwID)[0],
                                                   "op": "DelMatch Operation was not successful."})
     else:
         return render(request, 'error.html', {'message': 'Invalid request'})
