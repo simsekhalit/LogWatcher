@@ -1,5 +1,7 @@
+from ast import literal_eval
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
+import json
 import os
 import socket
 import sqlite3
@@ -28,33 +30,27 @@ def index(request, create=None):
 def logs(request, lwID=None):
     """Shows filtered logs of corresponding Watcher instance."""
     # TODO: Check if lwID exists
-    return render(request, "logs.html", {"logs": getLogs(lwID), "name": getWatcher(lwID)[0]})
+    return render(request, "logs.html", {"name": getWatcher(lwID)[0], "port": str(10000 + int(lwID))})
 
 
 @login_required
 def rules(request, lwID=None):
     """Shows and updates rules of a Watcher instance."""
+    response = None
     if request.method == "GET":
-        _rules = getRules(lwID)
-        return render(request, "rules.html", {"rules": _rules, "name": getWatcher(lwID)[0]})
+        pass
     elif request.POST['submit'] == 'SetMatch':
         path = request.POST['path']
         if path == 'NONE':
             path = '()'
         rule = request.POST['rule']
         buffer = UDSBuffer()
-        buffer.send("setMatch\n" + lwID + "\n" + rule + "\n" + path)
+        buffer.write(["setMatch", lwID, rule, path])
         response = buffer.recv()
-        _rules = getRules(lwID)
         if response == '0':
-            return render(request, "rules.html", {"rules": _rules, "name": getWatcher(lwID)[0],
-                                                  "op": "setMatch Operation was successful."})
-        elif response == '2':
-            return render(request, "rules.html", {"rules": _rules, "name": getWatcher(lwID)[0],
-                                                  "op": "Please fill fields with correct types"})
+            response = "setMatch Operation was successful."
         else:
-            return render(request, "rules.html", {"rules": _rules, "name": getWatcher(lwID)[0],
-                                                  "op": "setMatch Operation was not successful."})
+            response = "setMatch Operation was failed."
     elif request.POST['submit'] == 'CombineMatch':
         path = request.POST['path']
         connector = request.POST['connector']
@@ -62,37 +58,36 @@ def rules(request, lwID=None):
             path = '()'
         rule = request.POST['rule']
         buffer = UDSBuffer()
-        buffer.send("combineMatch\n" + lwID + "\n" + rule + "\n" + connector + "\n" + path)
+        buffer.write(["combineMatch", lwID, rule, connector, path])
         response = buffer.recv()
-        _rules = getRules(lwID)
         if response == '0':
-            return render(request, "rules.html", {"rules": _rules, "name": getWatcher(lwID)[0],
-                                                  "op": "CombineMatch Operation was successful."})
-        elif response == '2':
-            return render(request, "rules.html", {"rules": _rules, "name": getWatcher(lwID)[0],
-                                                  "op": "Please fill fields with correct types"})
+            response = "CombineMatch Operation was successful."
         else:
-            return render(request, "rules.html", {"rules": _rules, "name": getWatcher(lwID)[0],
-                                                  "op": "CombineMatch Operation was not successful."})
+            response = "CombineMatch Operation was failed."
     elif request.POST['submit'] == 'DelMatch':
         path = request.POST['path']
         if path == 'NONE':
             path = '()'
         buffer = UDSBuffer()
-        buffer.send("delMatch\n" + lwID + "\n" + path)
+        buffer.write(["delMatch", lwID, path])
         response = buffer.recv()
-        _rules = getRules(lwID)
         if response == '0':
-            return render(request, "rules.html", {"rules": _rules, "name": getWatcher(lwID)[0],
-                                                  "op": "DelMatch Operation was successful."})
-        elif response == '2':
-            return render(request, "rules.html", {"rules": _rules, "name": getWatcher(lwID)[0],
-                                                  "op": "Please fill fields with correct types"})
+            response = "DelMatch Operation was successful."
         else:
-            return render(request, "rules.html", {"rules": _rules, "name": getWatcher(lwID)[0],
-                                                  "op": "DelMatch Operation was not successful."})
-    else:
-        return render(request, 'error.html', {'message': 'Invalid request'})
+            response = "DelMatch Operation was failed."
+
+    _rules = getRules(lwID)
+    leaves = getLeaves(_rules)
+    return render(request, "rules.html",
+                  {"leaves": leaves, "rules": json.dumps(_rules), "name": getWatcher(lwID)[0], "response": response})
+
+
+def getLeaves(_rules, path=()):
+    while True:
+        if _rules["left"] or _rules["right"]:
+            return getLeaves(_rules["left"], path + (0,)) + getLeaves(_rules["right"], path + (1,))
+        else:
+            return [path]
 
 
 def getLogs(lwID):
@@ -105,7 +100,7 @@ def getLogs(lwID):
 def getRules(lwID):
     with sqlite3.connect(os.path.join(os.path.dirname(__file__), databasePath)) as conn:
         c = conn.cursor()
-        return c.execute("""select rules from rules where wid == ?""", (lwID,)).fetchone()[0]
+        return literal_eval(c.execute("""select rules from rules where wid == ?""", (lwID,)).fetchone()[0])
 
 
 def getWatcher(lwID):
@@ -121,7 +116,7 @@ def getWatchers():
         watchers = c.execute("""select wid, name from watchers""").fetchall()
         for watcher in watchers:
             logc = c.execute("""select count(log) from logs where wid == ?""", (watcher[0],)).fetchone()[0]
-            rulec = getRules(watcher[0]).count("{'value': ")
+            rulec = len(getLeaves(getRules(watcher[0])))
             ret.append({"wid": watcher[0], "name": watcher[1], "rules": rulec, "logs": logc})
     return ret
 

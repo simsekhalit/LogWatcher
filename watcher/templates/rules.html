@@ -12,8 +12,8 @@
 <body>
 <h1 align="center"> {{ name }} - Rules</h1>
 <br>
-{% if op %}
-<b>{{op}}</b>
+{% if response %}
+<b>{{ response }}</b>
 {% endif %}
 <form action="{{formaction}}" method=POST>
     {% csrf_token %}
@@ -22,16 +22,8 @@
 	<tr><td><b>Path:</b></td>
         		<td><select name="path">
 				<option value="NONE">Select A Path</option>
-				{% for r in rules %}
-                    {% if r.path %}
-					    {%if r.rule != OR %}
-                            {% if  r.rule != AND %}
-                                <option> {{ r.path }}</option>
-                            {% endif %}
-                        {% endif %}
-                    {% else %}
-                        <b>()</b>
-                    {% endif %}
+				{% for leaf in leaves %}
+                    <option> {{ leaf }}</option>
 				{% endfor %}
 			</select>
      <input type="submit" name="submit" value="SetMatch"/>
@@ -49,16 +41,8 @@
 	<tr><td><b>Path:</b></td>
         		<td><select name="path">
 				<option value="NONE">Select A Path</option>
-				{% for r in rules %}
-                    {% if r.path %}
-					    {%if r.rule != OR %}
-                            {% if  r.rule != AND %}
-                                <option> {{ r.path }}</option>
-                            {% endif %}
-                        {% endif %}
-                    {% else %}
-                        <b>()</b>
-                    {% endif %}
+				{% for leaf in leaves %}
+                    <option> {{ leaf }}</option>
 				{% endfor %}
 			</select>
      <input type="submit" name="submit" value="CombineMatch"/>
@@ -68,21 +52,12 @@
 	<tr><td><b>Path:</b></td>
         		<td><select name="path">
 				<option value="NONE">Select A Path</option>
-				{% for r in rules %}
-                    {% if r.path %}
-					    {%if r.rule != OR %}
-                            {% if  r.rule != AND %}
-                                <option> {{ r.path }}</option>
-                            {% endif %}
-                        {% endif %}
-                    {% else %}
-                        <b>()</b>
-                    {% endif %}
+				{% for leaf in leaves %}
+                    <option> {{ leaf }}</option>
 				{% endfor %}
 			</select>
      <input type="submit" name="submit" value="DelMatch"/>
 </form>
-<tr><td>{{ rules }}</td>
 </body>
 <body>
     
@@ -92,8 +67,24 @@
 </div>
 <script src="{% static "vendor/raphael.js" %}"></script>
 <script src="{% static "Treant.js" %}"></script>
-<script src="{% static "rules.js" %}"></script>
-<script>
+<script type='text/javascript'>
+    function convertRules(rules){
+        var ns = {};
+        ns.text = {name: String(rules.value)};
+        if (rules.left || rules.right){
+            ns.children = [];
+            ns.children.push(convertRules(rules.left));
+            ns.children.push(convertRules(rules.right));
+        }
+        return ns;
+    }
+
+    var simple_chart_config = {
+	chart: {
+		container: "#rules",
+		scrollbar: "fancy"
+	}};
+    simple_chart_config.nodeStructure = convertRules({{ rules|safe }});
     new Treant( simple_chart_config );
 </script>
 </body>

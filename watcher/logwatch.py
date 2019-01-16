@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 from ast import literal_eval
+import asyncio
 import ipaddress
 import multiprocessing
+import queue
 import re
 import sqlite3
 import sys
+import threading
+import websockets
 from util import databasePath, createNode, getNode
 from syslog_rfc5424_parser.constants import SyslogSeverity, SyslogFacility
 
@@ -21,10 +25,12 @@ class LogWatch(multiprocessing.Process):
         self.name = name
         self.pipe = pipe
         self.rules = createNode()
-        self.logs = set()
+        self.logCV = threading.Condition()
+        self.logs = []
         self.load()
 
     def run(self):
+        threading.Thread(target=self.websocketServer, daemon=True).start()
         while True:
             try:
                 data = self.pipe.recv()
@@ -34,8 +40,9 @@ class LogWatch(multiprocessing.Process):
                 if data[0] == "log":
                     try:
                         if self.applyFilters(self.rules, data[1].as_dict()):
-                            self.logs.add(str(data[1]))
+                            self.addLog(str(data[1]))
                             self.saveLog(str(data[1]))
+
                     except BaseException as e:
                         print("Log Watch {} ({}): {} ({})".format(self.lwID, self.name, e, str(data[1])),
                               file=sys.stderr)
@@ -53,6 +60,32 @@ class LogWatch(multiprocessing.Process):
                 print("Log Watch {} ({}): {}".format(self.lwID, self.name, e), file=sys.stderr)
                 self.pipe.send("1")
                 raise e
+
+    def addLog(self, log):
+        with self.logCV:
+            self.logs.append(log)
+            self.logCV.notify_all()
+
+    def websocketServer(self):
+        async def handler(websocket, path):
+            # TODO: Implement detection of end of connection
+            print(path, file=sys.stderr)
+            logIndex = 0
+
+            while True:
+                with self.logCV:
+                    for i in range(logIndex, len(self.logs)):
+                        try:
+                            await websocket.send(self.logs[i])
+                        except websockets.ConnectionClosed:
+                            return
+                    logIndex = len(self.logs)
+                    self.logCV.wait()
+
+        asyncio.set_event_loop(asyncio.new_event_loop())
+        start_server = websockets.serve(handler, "localhost", 10000 + self.lwID)
+        asyncio.get_event_loop().run_until_complete(start_server)
+        asyncio.get_event_loop().run_forever()
 
     def applyFilters(self, rules, payload):
         if rules["value"] == "AND":
@@ -216,4 +249,4 @@ class LogWatch(multiprocessing.Process):
             c = conn.cursor()
             self.rules = literal_eval(c.execute("""select rules from rules where wid == ?""",
                                                 (self.lwID,)).fetchone()[0])
-            self.logs = set(c.execute("""select log from logs where wid == ?""", (self.lwID,)).fetchall())
+            self.logs = [log[0] for log in c.execute("""select log from logs where wid == ?""", (self.lwID,)).fetchall()]
