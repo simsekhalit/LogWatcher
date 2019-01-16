@@ -1,6 +1,12 @@
+<60>1 2018-11-12T17:14:42.003Z yavuz apt - ID7 - Started Daily apt download activities.
 <16>1 2018-11-12T20:53:04.003Z halit Bluetooth - ID61 - BNEP filters: protocol multicast
-<25>1 2018-11-12T21:19:48.003Z 142.35.24.45 GtkFailed - ID49 - to load module 'canberra-gtk-module'
-<1>1 2018-11-12T10:44:07.003Z 48.122.25.156 NetworkNetworkManager - ID56 - <info>  [1543020767.7895] dhcp4 (eth0):   address 10.0.0.2
+<180>1 2018-11-12T13:35:22.003Z halit chromium - ID23 - Closing stream with result -2
+<184>1 2018-11-12T19:35:48.003Z yavuz systemd - ID64 - Started Run anacron jobs.
+<188>1 2018-11-12T20:29:18.003Z halit Dispatcher - ID84 - req:1 'connectivity-change': start running ordered scripts...
+<161>1 2018-11-12T16:52:03.003Z yavuz uefi - ID37 - Starting Firmware update daemon...
+<27>1 2018-11-12T11:30:12.003Z yavuz NetworkManager - ID75 - Server returned error NXDOMAIN, mitigating potential DNS violation DVE-2018-0001, retrying transaction with reduced feature level UDP.
+<4>1 2018-11-12T10:26:47.003Z yavuz NetworkManager - ID27 - NetworkManager state is now CONNECTED_SITE
+<162>1 2018-11-12T14:37:12.003Z halit NetworkManager - ID1 - Server returned error NXDOMAIN, mitigating potential DNS violation DVE-2018-0001, retrying transaction with reduced feature level UDP.
 <1>1 2018-11-12T19:34:44.003Z yavuz systemd - ID41 - Started Run anacron jobs.
 <100>1 2018-11-12T03:15:26.003Z halit uefi - ID39 - disabling plugin because: failed to coldplug synapticsmst: MST firmware updating not supported by OEM
 <8>1 2018-11-12T17:28:39.003Z yavuz storehelpers.go - ID87 - cannot refresh: snap has no updates available: 'core', 'gnome-3-26-1604', 'gnome-calculator', 'gnome-characters', 'gnome-logs', 'gnome-system-monitor', 'gtk-common-themes','spotify'

@@ -1,73 +1,70 @@
 # Sample integration test for Phase-4
 
-# Scenario: Three clients will enter "localhost:8000" URL in their browsers, one of them will create a LogWatch object with id = 0
-#           Another one will create another Logwatch object with id = 1
-#           Then these three clients will construct a rule tree on LogWatch 0
+# Scenario: A user will enter "localhost:8000" URL in their browsers, and will create a LogWatch object with id = 0
+#           Then user will construct a rule tree on LogWatch 0
 #           Then two log senders will send their logs to the LogWatch Manager from port 5140
 #           After sending process filtered logs will be seen on client browser and will be checked with sample_result.log
 #           Then a client will perform two delMatch operations on LogWatch 0
-#           Upon saving, again, two log senders will perform a log sending process
-#           Then filtered logs of last sending process will be checked with sample_result2.log
+#           Resulting tree will be seen checked accordingly.
 
 ## Run LogWatch Manager
 ## Run django development server from localhost:8000
-## Open localhost:8000 from three different browser sessions
 
-# Following rules needs to be applied in order on specified client:
-
-Client-1
+User
     Create new Watcher
     Create new Watcher (<-- For testing if mechanism can create multiple Logwatch instances)
     Clicks Rules button of Logwatch 0
-    SetMatch --> Rule: ("SEVERITY", "GT", "crit", False, False) Path: "Select a Path" (<-- Default for initial rule creation)
-    CombineMatch --> Rule: ("IP", "EQ", "halit", False, False) Connector: AND Path: ()
+
+    SetMatch --> Matchfield = RE:.*su root.* (?P<event>.*ed).*on (?P<event_location>.+):event_location
+                 Operator = EQ
+                 Value = /dev/pts/8
+                 Negated = False
+                 Case Insensitive = False
+                 Path = ()
+
+    CombineMatch --> Matchfield = IP
+                     Operator = EQ
+                     Value = yavuz
+                     Negated = False
+                     Case Insensitive = False
+                     Connector = AND
+                     Path = ()
+
+    CombineMatch --> Matchfield = SEVERITY
+                     Operator = GE
+                     Value = warning
+                     Negated = False
+                     Case Insensitive = False
+                     Connector = OR
+                     Path = (0,)
+
+    CombineMatch --> Matchfield = IP
+                     Operator = EQ
+                     Value = halit
+                     Negated = False
+                     Case Insensitive = False
+                     Connector = OR
+                     Path = (1,)
+
     Clicks Main Page button
 
-Client-2
-    Clicks Rules button of Logwatch 0
-    CombineMatch --> Rule: ("IP", "EQ", "yavuz", False, False) Connector: OR Path: (1,)
-    CombineMatch --> Rule: ("FIELD:0: ", "EQ", "disabling", False, False) Connector: OR Path: (0,)
-    CombineMatch --> Rule: ("FACILITY", "GT", "ntp", False, False) Connector: OR Path: (0,0)
-    Clicks Main Page button
-
-Client-3
-    Clicks Rules button of Logwatch 0
-    CombineMatch --> Rule: ("RE:.*su root.* (?P<event>.*ed).*on (?P<event_location>.+):event_location", "EQ", "/dev/pts/8", False, False) Connector: OR Path: (0,1)
-    CombineMatch --> Rule: ("IP", "EQ", "142.35.24.45", False, False) Connector: OR Path: (1,0)
-    CombineMatch --> Rule: ("IP", "EQ", "48.122.25.156", False, False) Connector: OR Path: (1,1)
-    Clicks Main Page button
-
-# Check rules with "sample_rules.txt":
 
 ## Run two senders with two different log sources:
     ../log_sender.py samples/sample.log
+    (Upon finish of first sending process)
     ../log_sender.py samples/sample2.log
 
 # During sending process on any of the clients can see the filtered log count (and also the rule count) of each individual LogWatch instance
 
 # After sending process, check filtered logs with "sample_result.log" on Logwatch 0 with clicking Logs button
 
-# After checking with "sample_result.log" one of the clients will create same rules on Logwatch 1 and delete two rules
+User:
+    Clicks Logs button of Logwatch 0
 
-Client-2
-    Clicks Rules button of Logwatch 1
-    SetMatch --> Rule: ("SEVERITY", "GT", "crit", False, False) Path: "Select a Path" (<-- Default for initial rule creation)
-    CombineMatch --> Rule: ("IP", "EQ", "halit", False, False) Connector: AND Path: ()
-    CombineMatch --> Rule: ("IP", "EQ", "yavuz", False, False) Connector: OR Path: (1,)
-    CombineMatch --> Rule: ("FIELD:0: ", "EQ", "disabling", False, False) Connector: OR Path: (0,)
-    CombineMatch --> Rule: ("FACILITY", "GT", "ntp", False, False) Connector: OR Path: (0,0)
-    CombineMatch --> Rule: ("RE:.*su root.* (?P<event>.*ed).*on (?P<event_location>.+):event_location", "EQ", "/dev/pts/8", False, False) Connector: OR Path: (0,1)
-    CombineMatch --> Rule: ("IP", "EQ", "142.35.24.45", False, False) Connector: OR Path: (1,0)
-    CombineMatch --> Rule: ("IP", "EQ", "48.122.25.156", False, False) Connector: OR Path: (1,1)
-    DelMatch --> Path: (1,0,1)
-    DelMatch --> Path: (1,1,1)
+# After checking with "sample_result.log" user can delete any rules to see that "DelMatch" operation works
+
+For example:
+    DelMatch --> Path: (0,0)
+    DelMatch --> Path: (1,1)
     Clicks Main Page button
 
-## Again, run two senders with two different log sources
-    ../log_sender.py samples/sample.log
-    ../log_sender.py samples/sample2.log
-
-# After sending process, check filtered logs with "sample_result2.log" on Logwatch 1 with clicking logs button
-
-Client-3
-    Clicks Logs button of Logwatch 1
