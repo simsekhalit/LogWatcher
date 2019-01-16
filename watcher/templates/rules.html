@@ -17,8 +17,29 @@
 {% endif %}
 <form action="{{formaction}}" method=POST>
     {% csrf_token %}
-    <tr><td><b>Rule:</b> </td>
-		<td> <input type="text" size=10 name="rule"/></td></tr>
+    <tr><td><b>Matchfield:</b> </td>
+        <td> <input type="text" size=5 name="matchfield"/></td></tr>
+    <tr><td><b>Operator:</b> </td>
+        <td><select name="operator">
+					<option> LT </option>
+					<option> LE </option>
+                    <option> GT </option>
+					<option> GE </option>
+					<option> RE </option>
+					<option> EQ </option>
+			</select>
+    <tr><td><b>Value:</b> </td>
+        <td> <input type="text" size=5 name="value"/></td></tr>
+    <tr><td><b>Negated:</b> </td>
+        <td><select name="negated">
+					<option> False </option>
+					<option> True </option>
+			</select>
+    <tr><td><b>Case Insensitive:</b> </td>
+        <td><select name="caseinsens">
+					<option> False </option>
+					<option> True </option>
+			</select>
 	<tr><td><b>Path:</b></td>
         		<td><select name="path">
 				<option value="NONE">Select A Path</option>
@@ -30,8 +51,29 @@
 </form>
 <form action="{{formaction}}" method=POST>
     {% csrf_token %}
-    <tr><td><b>Rule:</b> </td>
-		<td> <input type="text" size=10 name="rule"/></td></tr>
+<tr><td><b>Matchfield:</b> </td>
+        <td> <input type="text" size=5 name="matchfield"/></td></tr>
+    <tr><td><b>Operator:</b> </td>
+        <td><select name="operator">
+					<option> LT </option>
+					<option> LE </option>
+                    <option> GT </option>
+					<option> GE </option>
+					<option> RE </option>
+					<option> EQ </option>
+			</select>
+    <tr><td><b>Value:</b> </td>
+        <td> <input type="text" size=5 name="value"/></td></tr>
+    <tr><td><b>Negated:</b> </td>
+        <td><select name="negated">
+					<option> False </option>
+					<option> True </option>
+			</select>
+    <tr><td><b>Case Insensitive:</b> </td>
+        <td><select name="caseinsens">
+					<option> False </option>
+					<option> True </option>
+			</select>
     <tr><td><b>Connector:</b> </td>
 		<td><select name="connector">
 				<option value="NONE">Select A Connector</option>
@@ -60,7 +102,7 @@
 </form>
 </body>
 <body>
-    
+
 </body>
 <body>
 <div class="rules" id="rules">

@@ -43,9 +43,14 @@ def rules(request, lwID=None):
         path = request.POST['path']
         if path == 'NONE':
             path = '()'
-        rule = request.POST['rule']
+        matchfield = request.POST['matchfield']
+        operator = request.POST['operator']
+        value = request.POST['value']
+        negated = request.POST['negated']
+        caseinsens = request.POST['caseinsens']
+        rule = (matchfield,operator,value,negated,caseinsens)
         buffer = UDSBuffer()
-        buffer.write(["setMatch", lwID, rule, path])
+        buffer.write(["setMatch", lwID, str(rule), path])
         response = buffer.recv()
         if response == '0':
             response = "setMatch Operation was successful."
@@ -56,9 +61,14 @@ def rules(request, lwID=None):
         connector = request.POST['connector']
         if path == 'NONE':
             path = '()'
-        rule = request.POST['rule']
+        matchfield = request.POST['matchfield']
+        operator = request.POST['operator']
+        value = request.POST['value']
+        negated = request.POST['negated']
+        caseinsens = request.POST['caseinsens']
+        rule = (matchfield, operator, value, negated, caseinsens)
         buffer = UDSBuffer()
-        buffer.write(["combineMatch", lwID, rule, connector, path])
+        buffer.write(["combineMatch", lwID, str(rule), connector, path])
         response = buffer.recv()
         if response == '0':
             response = "CombineMatch Operation was successful."
