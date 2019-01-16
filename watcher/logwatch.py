@@ -68,17 +68,17 @@ class LogWatch(multiprocessing.Process):
 
     def websocketServer(self):
         async def handler(websocket, path):
-            logIndex = int(await websocket.recv())
+            try:
+                logIndex = int(await websocket.recv())
 
-            while True:
-                with self.logCV:
-                    for i in range(logIndex, len(self.logs)):
-                        try:
+                while True:
+                    with self.logCV:
+                        for i in range(logIndex, len(self.logs)):
                             await websocket.send(self.logs[i])
-                        except websockets.ConnectionClosed:
-                            return
-                    logIndex = len(self.logs)
-                    self.logCV.wait()
+                        logIndex = len(self.logs)
+                        self.logCV.wait()
+            except websockets.ConnectionClosed:
+                return
 
         asyncio.set_event_loop(asyncio.new_event_loop())
         start_server = websockets.serve(handler, "localhost", 10000 + self.lwID)
@@ -135,9 +135,9 @@ class LogWatch(multiprocessing.Process):
         elif matchfield == "IP":
             operand = payload["hostname"]
             if re.match(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', value):
-                value = ipaddress.IPv4Address(value)
+                value = int(ipaddress.IPv4Address(value))
             if re.match(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', payload["hostname"]):
-                operand = ipaddress.IPv4Address(payload["hostname"])
+                operand = int(ipaddress.IPv4Address(payload["hostname"]))
             if type(value) == type(operand):
                 return applyMatch(payload["hostname"])
             else:

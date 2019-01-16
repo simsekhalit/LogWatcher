@@ -126,7 +126,7 @@ def getWatchers():
         for watcher in watchers:
             logc = c.execute("""select count(log) from logs where wid == ?""", (watcher[0],)).fetchone()[0]
             rulec = len(getLeaves(getRules(watcher[0])))
-            ret.append({"wid": watcher[0], "name": watcher[1], "rules": rulec, "logs": logc})
+            ret.append({"wid": watcher[0], "name": watcher[1], "rulec": rulec, "logc": logc})
     return ret
 
 
