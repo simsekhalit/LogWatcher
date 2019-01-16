@@ -38,8 +38,6 @@ class LogWatch(multiprocessing.Process):
                     return
                 if data[0] == "log":
                     try:
-                        print(self.rules, file=sys.stderr)
-                        print(data, file=sys.stderr)
                         if self.applyFilters(self.rules, data[1].as_dict()):
                             self.addLog(str(data[1]))
                             self.saveLog(str(data[1]))
@@ -70,8 +68,7 @@ class LogWatch(multiprocessing.Process):
 
     def websocketServer(self):
         async def handler(websocket, path):
-            print(path, file=sys.stderr)
-            logIndex = 0
+            logIndex = int(await websocket.recv())
 
             while True:
                 with self.logCV:
@@ -104,7 +101,7 @@ class LogWatch(multiprocessing.Process):
             arg1 = operand
             arg2 = value
 
-            if caseinsens and type(operand) == str:
+            if caseinsens == "True" and type(operand) == str:
                 arg1 = arg1.lower()
                 arg2 = arg2.lower()
             if operator == "EQ":
@@ -121,7 +118,7 @@ class LogWatch(multiprocessing.Process):
                 ret = re.match(arg2, arg1) is not None
             else:
                 raise Exception("Invalid operator {0} in rule {1}".format(operator, rule))
-            if not negated:
+            if negated == "False":
                 return ret
             else:
                 return not ret
@@ -136,11 +133,12 @@ class LogWatch(multiprocessing.Process):
             return applyMatch(payload["msg"])
 
         elif matchfield == "IP":
-            if re.match(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', value) and \
-                    re.match(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', payload["hostname"]):
+            operand = payload["hostname"]
+            if re.match(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', value):
                 value = ipaddress.IPv4Address(value)
-                return applyMatch(ipaddress.IPv4Address(payload["hostname"]))
-            elif type(value) == str and type(payload["hostname"] == str):
+            if re.match(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', payload["hostname"]):
+                operand = ipaddress.IPv4Address(payload["hostname"])
+            if type(value) == type(operand):
                 return applyMatch(payload["hostname"])
             else:
                 return False

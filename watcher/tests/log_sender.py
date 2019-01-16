@@ -11,5 +11,6 @@ with open(sys.argv[1], "br") as log_source:
     log = log_source.readline()
     while log:
         sock.sendto(log, server)
-        time.sleep(0.5)
+        time.sleep(0.1)
+        # exit()
         log = log_source.readline()

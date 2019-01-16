@@ -8,10 +8,17 @@
 		<h1> {{name}} - Logs</h1>
             <table style="width:50%" border="1" cellspacing="0" id="logTable">
                 <tr><th>Log</th></tr>
+                {% for log in logs %}
+                    <tr><td>{{ log }}</td></tr>
+                {% endfor %}
+
             </table>
             <script>
                 // setup websocket with callbacks
                 var ws = new WebSocket('ws://localhost:' + {{ port }});
+                ws.onopen = function(){
+                    ws.send(document.getElementById("logTable").rows.length - 1)
+                };
                 ws.onmessage = function(event) {
                     var table = document.getElementById("logTable");
                     var row = table.insertRow(table.rows[table.rows.length]);

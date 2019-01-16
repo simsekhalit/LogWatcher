@@ -29,8 +29,8 @@ def index(request, create=None):
 @login_required
 def logs(request, lwID=None):
     """Shows filtered logs of corresponding Watcher instance."""
-    # TODO: Check if lwID exists
-    return render(request, "logs.html", {"name": getWatcher(lwID)[0], "port": str(10000 + int(lwID))})
+    return render(request, "logs.html", {"name": getWatcher(lwID)[0], "logs": getLogs(lwID),
+                                         "port": str(10000 + int(lwID))})
 
 
 @login_required
@@ -103,8 +103,7 @@ def getLeaves(_rules, path=()):
 def getLogs(lwID):
     with sqlite3.connect(os.path.join(os.path.dirname(__file__), databasePath)) as conn:
         c = conn.cursor()
-        data = c.execute("""select log from logs where wid == ?""", (lwID,)).fetchall()
-    return [log[0] for log in data]
+        return [log[0] for log in c.execute("""select log from logs where wid == ?""", (lwID,)).fetchall()]
 
 
 def getRules(lwID):
