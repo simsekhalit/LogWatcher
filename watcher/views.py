@@ -48,7 +48,7 @@ def rules(request, lwID=None):
         value = request.POST['value']
         negated = request.POST['negated']
         caseinsens = request.POST['caseinsens']
-        rule = (matchfield,operator,value,negated,caseinsens)
+        rule = (matchfield, operator, value, negated, caseinsens)
         buffer = UDSBuffer()
         buffer.write(["setMatch", lwID, str(rule), path])
         response = buffer.recv()

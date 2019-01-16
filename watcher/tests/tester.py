@@ -4,12 +4,13 @@ import os
 import sqlite3
 import sys
 import unittest
-import lwmanager
-import util
 
-testdir = os.path.dirname(__file__)
-srcdir = '../'
-sys.path.insert(0, os.path.abspath(os.path.join(testdir, srcdir)))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import logwatch_manager
+import test_logWatch
+import test_parser
+import test_util
+import util
 
 
 # Unit tests
@@ -30,9 +31,9 @@ def runIntegrationTests():
     exit()
 
     logFile = "samples/sample.log"
-    watcherInstance = watcher.LogWatch(0, None)
-    watcherInstance.setMatch(("WHOLE", "EQ", "NOTE: Not using GLX TFP!", False, True))
-    watcherInstance.combineMatch(("WHOLE", "RE", ".*Anacron.*", False, False), "OR")
+    watcherInstance = logwatch_manager.LogWatch(0, "Test Watcher", None)
+    watcherInstance.setMatch(("WHOLE", "EQ", "NOTE: Not using GLX TFP!", False, True), ())
+    watcherInstance.combineMatch(("WHOLE", "RE", ".*Anacron.*", False, False), "OR", ())
     watcherInstance.combineMatch(("WHOLE", "RE", ".*anacron.*", False, False), "OR", (1,))
     watcherInstance.combineMatch(("WHOLE", "RE", ".*ERROR.*", False, True), "OR", (0,))
     watcherInstance.combineMatch(("WHOLE", "RE", ".*STREAM.*", False, True), "AND", (0, 1))
@@ -60,8 +61,8 @@ def createTestDatabase():
 
 
 def main():
-    # runUnitTests()
-    runIntegrationTests()
+    runUnitTests()
+    # runIntegrationTests()
     print("\nAll tests are completed successfully.", file=sys.stderr)
 
 

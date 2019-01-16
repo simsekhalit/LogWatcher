@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 import os
-import sqlite3
 import sys
 import unittest
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../old")))
-import watcher
-from util import Node
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import logwatch_manager
+from util import createNode
 
 
 class TestLogWatch(unittest.TestCase):
     def test_applyRule(self):
-        watcherInstance = watcher.LogWatch(0, None)
+        watcherInstance = logwatch_manager.LogWatch(0, "Test Watcher", None)
 
         # Case 1 - matchfield : WHOLE
         payload = {'timestamp': 1542661800, 'hostname': 'john-pc', 'appname': 'gnome-shell', 'pid': '1758',
@@ -209,94 +209,69 @@ class TestLogWatch(unittest.TestCase):
 
     def test_combineMatch(self):
         # Case 1 - Single element rule tree
-        watcherInstance = watcher.LogWatch(0, None)
-        watcherInstance.rules.value = "OLD_MATCH"
-        watcherInstance.combineMatch("NEW_MATCH", "AND")
-        self.assertDictEqual({"value": "AND", "left": {"value": "OLD_MATCH", "left": None, "right": None},
-                              "right": {"value": "NEW_MATCH", "left": None, "right": None}}, watcherInstance.rules)
+        watcherInstance = logwatch_manager.LogWatch(0, "Test Watcher", None)
+        watcherInstance.rules = createNode(("OLD_MATCH",))
+        watcherInstance.combineMatch(("NEW_MATCH",), "AND", ())
+        self.assertDictEqual({"value": "AND", "left": {"value": ("OLD_MATCH",), "left": None, "right": None},
+                              "right": {"value": ("NEW_MATCH",), "left": None, "right": None}}, watcherInstance.rules)
 
         # Case 2 - Leaf of rule tree
-        watcherInstance.rules.value = "AND"
-        watcherInstance.rules.left = Node("OLD_MATCH")
-        watcherInstance.rules.right = Node("SOME_MATCH")
-        watcherInstance.combineMatch("NEW_MATCH", "OR", (0,))
+        watcherInstance.rules["value"] = "AND"
+        watcherInstance.rules["left"] = createNode(("IP", "GT", "0.0.0.0", False, False))
+        watcherInstance.rules["right"] = createNode(("IP", "LT", "255.255.255.255", False, False))
+        watcherInstance.combineMatch(("NEW_MATCH",), "OR", (0,))
         self.assertDictEqual({"value": "AND",
-                              "left": {"value": "OR", "left": {"value": "OLD_MATCH", "left": None, "right": None},
-                                       "right": {"value": "NEW_MATCH", "left": None, "right": None}},
-                              "right": {"value": "SOME_MATCH", "left": None, "right": None}}, watcherInstance.rules)
+                              "left": {"value": "OR",
+                                       "left": {"value": ("IP", "GT", "0.0.0.0", False, False),
+                                                "left": None, "right": None},
+                                       "right": {"value": ("NEW_MATCH",), "left": None, "right": None}},
+                              "right": {"value": ("IP", "LT", "255.255.255.255", False, False),
+                                        "left": None, "right": None}}, watcherInstance.rules)
 
     def test_delMatch(self):
         # Case 1 - Single element of rule tree
-        watcherInstance = watcher.LogWatch(0, None)
-        watcherInstance.rules.value = "MATCH"
-        watcherInstance.delMatch()
-        self.assertDictEqual({"value": None, "left": None, "right": None}, watcherInstance.rules)
+        watcherInstance = logwatch_manager.LogWatch(0, "Test Watcher", None)
+        watcherInstance.rules = createNode(("IP", "GT", "0.0.0.0", False, False))
+        watcherInstance.delMatch(())
+        self.assertDictEqual({"value": (), "left": None, "right": None}, watcherInstance.rules)
 
         # Case 2 - Internal element of rule tree
-        watcherInstance = watcher.LogWatch(0, None)
-        watcherInstance.rules.value = "AND"
-        watcherInstance.rules.left = Node("LEFT_MATCH")
-        watcherInstance.rules.right = Node("RIGHT_MATCH")
+        watcherInstance = logwatch_manager.LogWatch(0, "Test Watcher", None)
+        watcherInstance.rules["value"] = "AND"
+        watcherInstance.rules["left"] = createNode(("IP", "GT", "0.0.0.0", False, False))
+        watcherInstance.rules["right"] = createNode(("IP", "LT", "255.255.255.255", False, False))
         watcherInstance.delMatch((0,))
-        self.assertDictEqual({"value": "RIGHT_MATCH", "left": None, "right": None}, watcherInstance.rules)
+        self.assertDictEqual({"value": ("IP", "LT", "255.255.255.255", False, False), "left": None, "right": None},
+                             watcherInstance.rules)
 
     def test_setMatch(self):
         # Case 1 - Empty rules
-        watcherInstance = watcher.LogWatch(0, None)
-        watcherInstance.setMatch("MATCH")
-        self.assertDictEqual({"value": "MATCH", "left": None, "right": None}, watcherInstance.rules)
-
-        # Case 2 - Single element of rule tree
-        watcherInstance = watcher.LogWatch(0, None)
-        watcherInstance.rules.value = "OLD_MATCH"
-        watcherInstance.setMatch("NEW_MATCH")
-        self.assertDictEqual({"value": "NEW_MATCH", "left": None, "right": None}, watcherInstance.rules)
-
-        # Case 3 - Leaf of rule tree
-        watcherInstance = watcher.LogWatch(0, None)
-        watcherInstance.rules.value = "AND"
-        watcherInstance.rules.left = Node("OLD_LEFT_MATCH")
-        watcherInstance.rules.right = Node("OLD_RIGHT_MATCH")
-        watcherInstance.setMatch("NEW_LEFT_MATCH", (0,))
-        watcherInstance.setMatch("NEW_RIGHT_MATCH", (1,))
-        self.assertDictEqual({"value": "AND", "left": {"value": "NEW_LEFT_MATCH", "left": None, "right": None},
-                              "right": {"value": "NEW_RIGHT_MATCH", "left": None, "right": None}},
+        watcherInstance = logwatch_manager.LogWatch(0, "Test Watcher", None)
+        watcherInstance.setMatch(("IP", "GT", "0.0.0.0", False, False), ())
+        self.assertDictEqual({"value": ("IP", "GT", "0.0.0.0", False, False), "left": None, "right": None},
                              watcherInstance.rules)
 
-    def test_save(self):
-        watcherInstance = watcher.LogWatch(0, None)
-        watcherInstance.rules = Node(())
-        watcherInstance.rules.left = Node((0, ))
-        watcherInstance.rules.right = Node((1, ))
-        watcherInstance.rules.left.left = Node((0, 0))
-        watcherInstance.rules.left.right = Node((0, 1))
-        watcherInstance.rules.right.left = Node((1, 0))
-        watcherInstance.rules.right.right = Node((1, 1))
-        watcherInstance.save()
+        # Case 2 - Single element of rule tree
+        watcherInstance = logwatch_manager.LogWatch(0, "Test Watcher", None)
+        watcherInstance.rules = createNode(("IP", "GT", "0.0.0.0", False, False))
+        watcherInstance.setMatch(("IP", "LT", "255.255.255.255", False, False), ())
+        self.assertDictEqual({"value": ("IP", "LT", "255.255.255.255", False, False), "left": None, "right": None},
+                             watcherInstance.rules)
 
-        with sqlite3.connect("LogWatch.db") as conn:
-            c = conn.cursor()
-            dump = c.execute("""select * from LogWatch0;""").fetchall()
-
-        self.assertEqual([('()', '()'), ('(0,)', '(0,)'), ('(0, 0)', '(0, 0)'), ('(0, 1)', '(0, 1)'), ('(1,)', '(1,)'),
-                          ('(1, 0)', '(1, 0)'), ('(1, 1)', '(1, 1)')], dump)
-
-        os.remove("LogWatch.db")
-
-    def test_load(self):
-        watcherInstance1 = watcher.LogWatch(0, None)
-        watcherInstance1.rules = Node(())
-        watcherInstance1.rules.left = Node((0, ))
-        watcherInstance1.rules.right = Node((1, ))
-        watcherInstance1.rules.left.left = Node((0, 0))
-        watcherInstance1.rules.left.right = Node((0, 1))
-        watcherInstance1.rules.right.left = Node((1, 0))
-        watcherInstance1.rules.right.right = Node((1, 1))
-
-        watcherInstance2 = watcher.LogWatch(0, None)
-        watcherInstance2.database = "samples/test_db.db"
-        watcherInstance2.load()
-        self.assertEqual(watcherInstance1.rules, watcherInstance2.rules)
+        # Case 3 - Leaf of rule tree
+        rule1 = ("IP", "GT", "0.0.0.0", False, False)
+        rule2 = ("IP", "LT", "255.255.255.255", False, False)
+        rule3 = ("IP", "EQ", "10.0.0.1", False, False)
+        rule4 = ("IP", "EQ", "10.0.0.2", False, False)
+        watcherInstance = logwatch_manager.LogWatch(0, "Test Watcher", None)
+        watcherInstance.rules["value"] = "AND"
+        watcherInstance.rules["left"] = createNode(rule1)
+        watcherInstance.rules["right"] = createNode(rule2)
+        watcherInstance.setMatch(rule3, (0,))
+        watcherInstance.setMatch(rule4, (1,))
+        self.assertDictEqual({"value": "AND", "left": {"value": rule3, "left": None, "right": None},
+                              "right": {"value": rule4, "left": None, "right": None}},
+                             watcherInstance.rules)
 
 
 def main():

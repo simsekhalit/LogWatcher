@@ -26,9 +26,9 @@ class LogWatch(multiprocessing.Process):
         self.rules = createNode()
         self.logCV = threading.Condition()
         self.logs = []
-        self.load()
 
     def run(self):
+        self.load()
         threading.Thread(target=self.websocketServer, daemon=True).start()
         while True:
             try:
@@ -38,6 +38,8 @@ class LogWatch(multiprocessing.Process):
                     return
                 if data[0] == "log":
                     try:
+                        print(self.rules, file=sys.stderr)
+                        print(data, file=sys.stderr)
                         if self.applyFilters(self.rules, data[1].as_dict()):
                             self.addLog(str(data[1]))
                             self.saveLog(str(data[1]))
@@ -48,6 +50,7 @@ class LogWatch(multiprocessing.Process):
 
                 elif data[0] in methodsTable:
                     methodsTable[data[0]](*data[1:])
+                    self.saveRules()
                     self.pipe.send("0")
                 else:
                     self.pipe.send("2")
@@ -190,9 +193,6 @@ class LogWatch(multiprocessing.Process):
             raise Exception("Cant set rule at LogWatch {} since address {} is not a leaf".format(self.lwID, address))
         node["value"] = match
 
-        # Save rules to database
-        self.saveRules()
-
     # Set the the addressed node to given "connector" value. ("AND" or "OR")
     # Left branch of connector will be the previous node's match value, right branch will be the new match value.
     def combineMatch(self, match, connector, address):
@@ -204,9 +204,6 @@ class LogWatch(multiprocessing.Process):
         node["value"] = connector
         node["right"] = createNode(match)
 
-        # Save rules to database
-        self.saveRules()
-
     # Delete the node at given address, the sibling of the node will replace the parent logical operator.
     def delMatch(self, address: tuple):
         node = getNode(self.rules, address)
@@ -214,7 +211,7 @@ class LogWatch(multiprocessing.Process):
             raise Exception("Cant delete rule at LogWatch {} since address {} is not a leaf".format(self.lwID,
                                                                                                     address))
         if address == ():
-            node["value"] = None
+            node["value"] = ()
             node["left"] = None
             node["right"] = None
         else:
@@ -227,9 +224,6 @@ class LogWatch(multiprocessing.Process):
             parentNode["value"] = survivorNode["value"]
             parentNode["left"] = survivorNode["left"]
             parentNode["right"] = survivorNode["right"]
-
-        # Save rules to database
-        self.saveRules()
 
     def saveLog(self, log):
         with sqlite3.connect(databasePath) as conn:
