@@ -139,7 +139,7 @@ class LogWatch(multiprocessing.Process):
             if re.match(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', payload["hostname"]):
                 operand = int(ipaddress.IPv4Address(payload["hostname"]))
             if type(value) == type(operand):
-                return applyMatch(payload["hostname"])
+                return applyMatch(operand)
             else:
                 return False
 
