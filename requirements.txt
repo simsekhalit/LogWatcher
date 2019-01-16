@@ -2,3 +2,4 @@ Django==2.1.4
 pyparsing==2.3.0
 pytz==2018.7
 syslog-rfc5424-parser==0.1.4
+websockets==7.0
