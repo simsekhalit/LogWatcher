@@ -2,8 +2,8 @@
 import os
 import sys
 import unittest
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../old")))
-from parser import Parser
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
+from log_parser import Parser
 
 
 class TestParser(unittest.TestCase):
@@ -11,7 +11,7 @@ class TestParser(unittest.TestCase):
         fileParser = Parser(False)
         line = "Nov 20 00:10:00 john-pc gnome-shell[1758]: NOTE: Not using GLX TFP!"
         payload = fileParser.parse(line)
-        self.assertDictEqual({'timestamp': 1542661800, 'hostname': 'john-pc', 'appname': 'gnome-shell', 'pid': '1758',
+        self.assertDictEqual({'timestamp': 1574197800, 'hostname': 'john-pc', 'appname': 'gnome-shell', 'pid': '1758',
                               'msg': 'NOTE: Not using GLX TFP!'}, payload)
 
         socketParser = Parser(True)

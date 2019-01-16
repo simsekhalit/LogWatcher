@@ -1,4 +1,4 @@
-# Sample integration test for Phase-3
+# Sample integration test for Phase-4
 
 # Scenario: Three clients will enter "localhost:8000" URL in their browsers, one of them will create a LogWatch object with id = 0
 #           Another one will create another Logwatch object with id = 1

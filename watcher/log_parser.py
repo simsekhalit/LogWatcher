@@ -1,6 +1,6 @@
 import time
 from pyparsing import Word, alphas, Suppress, Combine, nums, string, Optional, Regex
-from syslog_rfc5424_parser import SyslogMessage, ParseError
+from syslog_rfc5424_parser import SyslogMessage
 
 
 class Parser(object):

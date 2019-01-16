@@ -3,7 +3,6 @@ from ast import literal_eval
 import asyncio
 import ipaddress
 import multiprocessing
-import queue
 import re
 import sqlite3
 import sys
@@ -68,7 +67,6 @@ class LogWatch(multiprocessing.Process):
 
     def websocketServer(self):
         async def handler(websocket, path):
-            # TODO: Implement detection of end of connection
             print(path, file=sys.stderr)
             logIndex = 0
 
