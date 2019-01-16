@@ -76,13 +76,8 @@
 			</select>
      <input type="submit" name="submit" value="DelMatch"/>
 </form>
-<table style="width:50%" border="1" cellspacing="0">
-    <tr><th>Path</th><th>Rule</th>
-    {% for rulee in rules %}
-    <tr><td>{{ rulee.path }}</td><td>{{ rulee.rule }}</td>
-    {% endfor %}
-</table>
+<tr><td>{{ rules }}</td>
 </body>
 <br>
-<a href="http://localhost:8000/">Main page</a>
+<a href="/">Main page</a>
 </html>

@@ -2,19 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Filtered Logs of {{lw}}}</title>
+    <title>Filtered Logs of {{ name }}</title>
 </head>
 <body>
-<h1> Filtered Logs of {{lw}} </h1>
+<h1> Filtered Logs of {{ name }} </h1>
 <table style="width:50%" border="1" cellspacing="0">
     <tr><th>Log</th></tr>
-    {% for l in filteredLogs %}
-    <tr><td>{{ l.log }}</td>
+    {% for log in logs %}
+    <tr><td>{{ log }}</td>
     {% endfor %}
 </table>
 </body>
 <br>
-<a href="http://localhost:8000/">Main page</a>
+<a href="/">Main page</a>
 </html>
-
-
