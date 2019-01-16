@@ -1,18 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>{{ name }} - Logs</title>
-</head>
-<body>
-<h1>{{ name }} - Logs</h1>
-<table style="width:50%" border="1" cellspacing="0">
-    <tr><th>Log</th></tr>
-    {% for log in logs %}
-    <tr><td>{{ log }}</td>
-    {% endfor %}
-</table>
-</body>
-<br>
-<a href="/">Main page</a>
+	<head>
+	    <meta charset="UTF-8">
+	    <title>{{name}} -- Logs</title>
+	</head>
+	<body>
+		<h1> {{name}} -- Logs</h1>
+            <table style="width:50%" border="1" cellspacing="0" id="logTable">
+                <tr><th>Log</th></tr>
+                {% for l in logs %}
+                    <tr><td>{{ l.log }}</td>
+                {% endfor %}
+            </table>
+            <script>
+                // setup websocket with callbacks
+                var ws = new WebSocket('ws://localhost:8765/');
+                ws.onopen = function() {
+                    ws.send("hi");
+                };
+                ws.onclose = function() {
+                    ws.send("bye")
+                };
+                ws.onmessage = function(event) {
+                    var table = document.getElementById("logTable");
+                    var row = table.insertRow(table.rows[table.rows.length]);
+                    var cell = row.insertCell(table.rows[table.rows.length]);
+                    cell.innerHTML='<td>' + event.data + '</td>';
+                };
+            </script>
+	</body>
+	<br>
+	<a href="http://localhost:8000/">Main page</a>
 </html>
+
+
