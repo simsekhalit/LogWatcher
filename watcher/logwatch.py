@@ -209,9 +209,7 @@ class LogWatch(multiprocessing.Process):
             raise Exception("Cant delete rule at LogWatch {} since address {} is not a leaf".format(self.lwID,
                                                                                                     address))
         if address == ():
-            node["value"] = ()
-            node["left"] = None
-            node["right"] = None
+            self.rules = createNode()
         else:
             parentNode = getNode(self.rules, address[:-1])
             if address[-1] == 0:

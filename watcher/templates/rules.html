@@ -21,12 +21,12 @@
         <td> <input type="text" size=5 name="matchfield"/></td></tr>
     <tr><td><b>Operator:</b> </td>
         <td><select name="operator">
-					<option> LT </option>
-					<option> LE </option>
-                    <option> GT </option>
-					<option> GE </option>
-					<option> RE </option>
-					<option> EQ </option>
+            <option> EQ </option>
+            <option> GE </option>
+            <option> GT </option>
+            <option> LE </option>
+            <option> LT </option>
+            <option> RE </option>
 			</select>
     <tr><td><b>Value:</b> </td>
         <td> <input type="text" size=5 name="value"/></td></tr>
@@ -42,7 +42,7 @@
 			</select>
 	<tr><td><b>Path:</b></td>
         		<td><select name="path">
-				<option value="NONE">Select A Path</option>
+				<option value="">Select A Path</option>
 				{% for leaf in leaves %}
                     <option> {{ leaf }}</option>
 				{% endfor %}
@@ -55,12 +55,12 @@
         <td> <input type="text" size=5 name="matchfield"/></td></tr>
     <tr><td><b>Operator:</b> </td>
         <td><select name="operator">
-					<option> LT </option>
-					<option> LE </option>
-                    <option> GT </option>
-					<option> GE </option>
-					<option> RE </option>
-					<option> EQ </option>
+            <option> EQ </option>
+            <option> GE </option>
+            <option> GT </option>
+            <option> LE </option>
+            <option> LT </option>
+            <option> RE </option>
 			</select>
     <tr><td><b>Value:</b> </td>
         <td> <input type="text" size=5 name="value"/></td></tr>
@@ -76,13 +76,13 @@
 			</select>
     <tr><td><b>Connector:</b> </td>
 		<td><select name="connector">
-				<option value="NONE">Select A Connector</option>
+				<option value="">Select A Connector</option>
 					<option> OR </option>
                     <option> AND </option>
 			</select>
 	<tr><td><b>Path:</b></td>
         		<td><select name="path">
-				<option value="NONE">Select A Path</option>
+				<option value="">Select A Path</option>
 				{% for leaf in leaves %}
                     <option> {{ leaf }}</option>
 				{% endfor %}
@@ -93,7 +93,7 @@
     {% csrf_token %}
 	<tr><td><b>Path:</b></td>
         		<td><select name="path">
-				<option value="NONE">Select A Path</option>
+				<option value="" aria-disabled="true">Select A Path</option>
 				{% for leaf in leaves %}
                     <option> {{ leaf }}</option>
 				{% endfor %}

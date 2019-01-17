@@ -41,50 +41,47 @@ def rules(request, lwID=None):
         pass
     elif request.POST['submit'] == 'SetMatch':
         path = request.POST['path']
-        if path == 'NONE':
-            path = '()'
-        matchfield = request.POST['matchfield']
-        operator = request.POST['operator']
-        value = request.POST['value']
-        negated = request.POST['negated']
-        caseinsens = request.POST['caseinsens']
-        rule = (matchfield, operator, value, negated, caseinsens)
-        buffer = UDSBuffer()
-        buffer.write(["setMatch", lwID, str(rule), path])
-        response = buffer.recv()
-        if response == '0':
-            response = "setMatch Operation was successful."
-        else:
-            response = "setMatch Operation was failed."
+        if path:
+            matchfield = request.POST['matchfield']
+            operator = request.POST['operator']
+            value = request.POST['value']
+            negated = request.POST['negated']
+            caseinsens = request.POST['caseinsens']
+            rule = (matchfield, operator, value, negated, caseinsens)
+            buffer = UDSBuffer()
+            buffer.write(["setMatch", lwID, str(rule), path])
+            response = buffer.recv()
+            if response == '0':
+                response = "setMatch Operation was successful."
+            else:
+                response = "setMatch Operation has failed."
     elif request.POST['submit'] == 'CombineMatch':
         path = request.POST['path']
         connector = request.POST['connector']
-        if path == 'NONE':
-            path = '()'
-        matchfield = request.POST['matchfield']
-        operator = request.POST['operator']
-        value = request.POST['value']
-        negated = request.POST['negated']
-        caseinsens = request.POST['caseinsens']
-        rule = (matchfield, operator, value, negated, caseinsens)
-        buffer = UDSBuffer()
-        buffer.write(["combineMatch", lwID, str(rule), connector, path])
-        response = buffer.recv()
-        if response == '0':
-            response = "CombineMatch Operation was successful."
-        else:
-            response = "CombineMatch Operation was failed."
+        if path and connector:
+            matchfield = request.POST['matchfield']
+            operator = request.POST['operator']
+            value = request.POST['value']
+            negated = request.POST['negated']
+            caseinsens = request.POST['caseinsens']
+            rule = (matchfield, operator, value, negated, caseinsens)
+            buffer = UDSBuffer()
+            buffer.write(["combineMatch", lwID, str(rule), connector, path])
+            response = buffer.recv()
+            if response == '0':
+                response = "CombineMatch Operation was successful."
+            else:
+                response = "CombineMatch Operation has failed."
     elif request.POST['submit'] == 'DelMatch':
         path = request.POST['path']
-        if path == 'NONE':
-            path = '()'
-        buffer = UDSBuffer()
-        buffer.write(["delMatch", lwID, path])
-        response = buffer.recv()
-        if response == '0':
-            response = "DelMatch Operation was successful."
-        else:
-            response = "DelMatch Operation was failed."
+        if path:
+            buffer = UDSBuffer()
+            buffer.write(["delMatch", lwID, path])
+            response = buffer.recv()
+            if response == '0':
+                response = "DelMatch Operation was successful."
+            else:
+                response = "DelMatch Operation has failed."
 
     _rules = getRules(lwID)
     leaves = getLeaves(_rules)
@@ -125,7 +122,11 @@ def getWatchers():
         watchers = c.execute("""select wid, name from watchers""").fetchall()
         for watcher in watchers:
             logc = c.execute("""select count(log) from logs where wid == ?""", (watcher[0],)).fetchone()[0]
-            rulec = len(getLeaves(getRules(watcher[0])))
+            leaves = getLeaves(getRules(watcher[0]))
+            if not leaves[0]:
+                rulec = 0
+            else:
+                rulec = len(leaves)
             ret.append({"wid": watcher[0], "name": watcher[1], "rulec": rulec, "logc": logc})
     return ret
 
