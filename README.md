@@ -25,4 +25,4 @@ The match value is a n-tuple in the form (```matchfield```, ```operator```, ```v
 
 ## How to run?
 
-Start Django development server and start ```watcher/logwatch_manager.py```, after that you can login from browser and create LogWatch objects which will listen incoming logs from 5140 port. For a demo, one can use ```watcher/tests/samples/how_to_test.txt```.
+Start Django development server and start ```watcher/logwatch_manager.py```, after that you can login from browser and create LogWatch objects which will listen incoming logs from 5140 port. For a demo, one can use ```watcher/tests/demo.txt```.
