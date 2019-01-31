@@ -1,5 +1,5 @@
-# Sample integration test for Phase-4
-
+# Demo
+# 
 # Scenario: A user will enter "localhost:8000" URL in their browsers, and will create a LogWatch object with id = 0
 #           Then user will construct a rule tree on LogWatch 0
 #           Then two log senders will send their logs to the LogWatch Manager from port 5140
