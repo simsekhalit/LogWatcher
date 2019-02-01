@@ -15,14 +15,14 @@ A filter match can be defined on equality, inequality, substring or regular expr
 
 ## Internal Details
 
-The filtering rules have a tree structure of user's choice since AND and OR operators can be used to combine match expressions. In order to edit this tree, user needs to address an arbitrary node or leaf. A path based addressing can be in form of list of binary branch choices as (0,1,1,0) denoting left, right, right, and left branch is traversed to get a subtree. The null tuple () denotes the root tree.
+The filtering rules have a tree structure of user's choice since ```AND``` and ```OR``` operators can be used to combine ```match``` expressions. In order to edit this tree, user needs to address an arbitrary node or leaf. A path based addressing can be in form of list of binary branch choices as ```(0,1,1,0)``` denoting left, right, right, and left branch is traversed to get a subtree. The null tuple ```()``` denotes the root tree.
 
-The match value is a n-tuple in the form (```matchfield```, ```operator```, ```value```, ```negated```, ```caseinsens```). 
+The ```match``` value is a tuple in the form (```matchfield```, ```operator```, ```value```, ```negated```, ```caseinsens```). 
 
 ```matchfield``` is one of ```WHOLE```, ```IP```, ```SEVERITY```, ```FACILITY```, ```FIELD:range:sep```, ```RE:regexp:field```. ```WHOLE``` matches the whole normalized syslog message. ```IP``` is ip number or hostname specified in the log. For ```SEVERITY``` and ```FACILITY``` comparison was made based on manual pages of syslog. The ```FIELD``` is followed by a range description, either a single number two numbers seperated by a dash. the last subfield is the separator symbol. For example ```FIELD:2-5:```, will seperate log line with ```,```, compose a substring from field 2 (starting from 0) to 5 inclusive and match that string. ```RE:regexp:field``` passes syslog message on a regular expression substitute and subtitutes it with the given field. This way message body extracts the regular expression based group. The value is simply: ```re.sub(regexp, '\g<' + field + '>',  message)```. 
 
-```operator``` is one of EQ, LT, LE, GT, GE, or RE. RE is used for regular expression match assuming value is a regular expression. All the others are comparison operators. ```value``` is the other operand of the operator. First operand is the log component. If ```negated``` is True the calculated match value is reversed. If ```caseinsens``` is true all matches are case insensitive, values are converted to lowercase and than compared.
+```operator``` is one of ```EQ```, ```LT```, ```LE```, ```GT```, ```GE```, or ```RE```. ```RE``` is used for regular expression match assuming value is a regular expression. All the others are comparison operators. ```value``` is the other operand of the operator. First operand is the log component. If ```negated``` is True the calculated match value is reversed. If ```caseinsens``` is true all matches are case insensitive, values are converted to lowercase and than compared.
 
 ## How to run?
 
-Start Django development server and start ```watcher/logwatch_manager.py```, after that you can login from browser and create LogWatch objects which will listen incoming logs from 5140 port. For a demo, one can use ```watcher/tests/demo.txt```.
+Start Django development server and start ```watcher/logwatch_manager.py```, after that you can login from browser and create LogWatch objects which will listen incoming logs from 5140 port. For login, you can directly use ```manage.py``` to create a super user and (if desired) create more users from the admin page. For a demo, you can use ```watcher/tests/demo.txt```.

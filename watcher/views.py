@@ -52,9 +52,9 @@ def rules(request, lwID=None):
             buffer.write(["setMatch", lwID, str(rule), path])
             response = buffer.recv()
             if response == '0':
-                response = "setMatch Operation was successful."
+                response = "SetMatch Operation was successful."
             else:
-                response = "setMatch Operation has failed."
+                response = "SetMatch Operation has failed."
     elif request.POST['submit'] == 'CombineMatch':
         path = request.POST['path']
         connector = request.POST['connector']

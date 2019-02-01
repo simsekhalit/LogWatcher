@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
+
+import log_parser
 import multiprocessing
 import socket
 import threading
-import log_parser
 
 collectorPort = 5140
 databasePath = "db.sqlite3"
