@@ -1,4 +1,6 @@
-# LogWatcher - An Enhanced Log Watch Tool with Custom Filtering
+# LogWatcher
+
+Simply put: LogWatcher is a Log Watch Tool with Custom Filtering created using syslog-rfc5424-parser and websockets libraries of Python and served with Django
 
 Event logs of multiple systems can be sent to a remote log server for central management. Usually logs are text files without structure. Most of the logs are about usual activities and irrelevant for a system administrator. Filtering the logs for relevant events based on the content is essential in a central log management software.
 
@@ -23,6 +25,42 @@ The ```match``` value is a tuple in the form (```matchfield```, ```operator```, 
 
 ```operator``` is one of ```EQ```, ```LT```, ```LE```, ```GT```, ```GE```, or ```RE```. ```RE``` is used for regular expression match assuming value is a regular expression. All the others are comparison operators. ```value``` is the other operand of the operator. First operand is the log component. If ```negated``` is True the calculated match value is reversed. If ```caseinsens``` is true all matches are case insensitive, values are converted to lowercase and than compared.
 
-## How to run?
+## Installation and Usage
 
-Start Django development server and start ```watcher/logwatch_manager.py```, after that you can login from browser and create LogWatch objects which will listen incoming logs from 5140 port. For login, you can directly use ```manage.py``` to create a super user and (if desired) create more users from the admin page. For a demo, you can use ```watcher/tests/demo.txt```.
+First clone the repository
+```
+git clone https://github.com/simsekhalit/LogWatcher/
+```
+
+Install requirements
+```
+cd LogWatcher/
+pip3 install -r requirements.txt
+```
+Create database
+```
+./manage.py migrate
+```
+
+Create an admin account
+```
+./manage.py createsuperuser
+```
+
+Run django server
+```
+./manage.py runserver
+```
+
+Then start 
+```
+watcher/logwatch_manager.py
+```
+
+After that you can login from browser and create LogWatch objects which will listen incoming logs from 5140 port. 
+
+
+For a demo, you can use ```watcher/tests/demo.txt```.
+
+## Contribution
+Feel free to open an issue if you find a bug :blush:.
